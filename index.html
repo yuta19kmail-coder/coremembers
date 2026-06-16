@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="app-version" content="0.1.0">
+<title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
+<link rel="stylesheet" href="css/launcher.css?v=4">
+<style>
+  :root{
+    --acc:#ea580c; --acc2:#f97316;
+    --bg:#0e1116; --bg2:#161b22; --bg3:#1d242e; --bg4:#252e3a;
+    --text:#e6edf3; --text2:#9aa7b4; --text3:#6b7886;
+    --border:rgba(255,255,255,.10); --r:12px;
+    --carflow:#378ADD;
+  }
+  html[data-theme="light"]{ --bg:#f5f7fa; --bg2:#ffffff; --bg3:#eef2f6; --bg4:#e2e8f0; --text:#1a2230; --text2:#55616e; --text3:#8a96a3; --border:rgba(0,0,0,.10); }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Hiragino Kaku Gothic ProN","Yu Gothic Medium","Meiryo",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  button{font-family:inherit}
+
+  /* ログイン */
+  #cm-login,#cm-denied{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:radial-gradient(1200px 600px at 50% -10%,#3a2412 0%,#16100c 55%,#0e0a0a 100%)}
+  #cm-denied{display:none}
+  .lc{width:min(92vw,380px);background:rgba(28,22,18,.9);border:1px solid rgba(234,88,12,.35);border-radius:16px;padding:30px 26px;text-align:center;color:#f0e8e0;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .lc .lg{font-size:28px;font-weight:800}.lc .lg .sf{color:var(--acc2)}
+  .lc .sub{margin-top:6px;font-size:13px;color:#c8a98f}
+  .lc .btn{margin-top:20px;width:100%;padding:12px 14px;border:0;border-radius:10px;background:var(--acc);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+  .lc .btn:hover{background:var(--acc2)}
+  .lc .note{margin-top:16px;font-size:11.5px;line-height:1.6;color:#9a8474}
+  .lc .ver{margin-top:14px;font-size:11px;color:#7a6a5c}
+
+  /* レイアウト */
+  #app{display:none;grid-template-columns:230px 1fr;grid-template-rows:54px 1fr;height:100vh}
+  #topbar{grid-column:1/3;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--border)}
+  .logo{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:800}
+  .logo .sf{color:var(--acc2)}
+  .logo .ver{font-size:10px;color:var(--text3);font-weight:600;margin-left:6px;background:var(--bg3);padding:2px 8px;border-radius:8px}
+  .sb-toggle{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 10px;font-size:15px;line-height:1;cursor:pointer}
+  .sb-toggle:hover{border-color:var(--acc)}
+  .theme-toggle{display:inline-flex;align-items:center;justify-content:center;height:32px;min-width:34px;padding:0 10px;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:16px;line-height:1;cursor:pointer}
+  .theme-toggle:hover{border-color:var(--acc);color:var(--text)}
+  .spacer{flex:1}
+  .tb-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+  .tb-btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .tb-btn:hover{border-color:var(--acc)}
+  .topbar-user{display:flex;align-items:center;gap:8px;margin-left:18px}
+  .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ea580c,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;overflow:hidden;flex:none}
+  .av img{width:100%;height:100%;object-fit:cover}
+  .uname{font-size:13px;color:var(--text2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .help-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:700;cursor:pointer}
+  .help-btn:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
+  .btn-sm{font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer}
+  .btn-sm:hover{color:var(--text);border-color:var(--text3);background:var(--bg3)}
+  .sync-indicator{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:10px;font-size:10px;font-weight:600;background:var(--bg3);border:1px solid var(--border);color:var(--text2);white-space:nowrap}
+  .sync-indicator .sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;animation:syncPulse 2.4s infinite}
+  .sync-indicator.sync-offline{background:rgba(239,68,68,.14);border-color:rgba(239,68,68,.4);color:#fca5a5}
+  .sync-indicator.sync-offline .sync-dot{background:#ef4444;animation:none}
+  @keyframes syncPulse{0%,100%{opacity:1}50%{opacity:.4}}
+  body.sb-collapsed #app{grid-template-columns:0 1fr}
+  body.sb-collapsed #sidebar{display:none}
+  @media(max-width:820px){.uname{display:none}.sb-toggle{display:none}.sync-indicator .sync-text{display:none}#app{grid-template-columns:1fr}#sidebar{display:none}}
+
+  #sidebar{grid-column:1;background:var(--bg2);border-right:1px solid var(--border);padding:12px 0;overflow-y:auto;display:flex;flex-direction:column}
+  .si-title{font-size:10px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;padding:12px 16px 4px}
+  .si-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;font-size:13px;color:var(--text2)}
+  .si-item:hover{background:var(--bg3);color:var(--text)}
+  .si-item.active{background:var(--bg3);color:var(--text);box-shadow:inset 3px 0 0 var(--acc)}
+  .si-item .ic{font-size:15px}
+
+  #main{grid-column:2;overflow-y:auto;padding:16px 18px 40px}
+  .view{display:none}.view.active{display:block}
+  .vhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .vtitle{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .vh-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+  .vh-btn:hover{border-color:var(--acc)}
+  .vh-btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .search{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 11px;font-size:13px;font-family:inherit;min-width:180px}
+
+  /* 名簿 */
+  .dept-group{margin-bottom:18px}
+  .dept-h{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;margin-bottom:7px;color:var(--text2)}
+  .dept-h .dot{width:11px;height:11px;border-radius:3px}
+  .dept-h .cnt{font-size:11px;color:var(--text3);font-weight:600}
+  .mcard{display:flex;align-items:center;gap:11px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:10px 13px;margin-bottom:7px;cursor:pointer}
+  .mcard:hover{border-color:var(--acc)}
+  .mcard .mav{width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;overflow:hidden}
+  .mcard .mav img{width:100%;height:100%;object-fit:cover}
+  .mcard .mn{font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .mcard .mk{font-size:11px;color:var(--text3)}
+  .mcard .mmeta{font-size:11.5px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .mcard .grow{flex:1;min-width:0}
+  .badge{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px}
+  .b-emp{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+  .b-off{background:rgba(239,68,68,.14);color:#fca5a5}
+  .b-leave{background:rgba(245,158,11,.16);color:#fcd34d}
+  .b-login{background:rgba(55,138,221,.16);color:#7db8ee}
+  .b-nologin{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
+  .b-noplan{background:rgba(120,120,120,.18);color:var(--text3)}
+  .empty{color:var(--text3);font-size:13px;padding:14px 0}
+
+  /* 汎用リスト行（組織/場所） */
+  .lrow{display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin-bottom:7px}
+  .lrow .grow{flex:1;min-width:0}
+  .lrow .lt{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .lrow .ls{font-size:11.5px;color:var(--text3);margin-top:2px}
+  .lrow .dot{width:12px;height:12px;border-radius:3px;flex:none}
+  .iconbtn{background:none;border:1px solid var(--border);color:var(--text2);border-radius:7px;cursor:pointer;font-size:13px;padding:4px 9px}
+  .iconbtn:hover{border-color:var(--acc);color:var(--text)}
+
+  /* モーダル */
+  .mbg{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:200}
+  .mbg.show{display:flex}
+  .mbox{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:min(94vw,560px);max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
+  .mhead{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .mhead .mt{font-size:15px;font-weight:700;flex:1}
+  .mhead .x{background:none;border:0;color:var(--text2);font-size:18px;cursor:pointer}
+  .mbody{padding:16px;overflow-y:auto}
+  .mfoot{padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+  .mfoot .grow{flex:1}
+  .btn-save{background:var(--acc);border:0;color:#fff;border-radius:8px;padding:9px 20px;font-size:14px;font-weight:700;cursor:pointer}
+  .btn-save:hover{background:var(--acc2)}
+  .btn-del{background:none;border:1px solid rgba(239,68,68,.5);color:#f87171;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer}
+  .btn-del:hover{background:rgba(239,68,68,.1)}
+  .btn-ghost{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer}
+
+  .fld{margin-bottom:12px}
+  .fld>label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+  .fld input[type=text],.fld input[type=date],.fld input[type=number],.fld input[type=email],.fld select,.fld textarea{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit}
+  .fld textarea{min-height:50px;resize:vertical}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  @media(max-width:520px){.row2,.row3{grid-template-columns:1fr}}
+  .sec-h{font-size:12px;font-weight:700;color:var(--acc2);margin:16px 0 8px;border-top:1px solid var(--border);padding-top:12px}
+  .sec-h:first-child{border-top:0;padding-top:0;margin-top:0}
+  .seg-pick{display:flex;gap:6px;flex-wrap:wrap}
+  .pick{font-size:12.5px;padding:6px 11px;border-radius:999px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;user-select:none}
+  .pick:hover{border-color:var(--acc)} .pick.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .toggle{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
+  .toggle input{width:auto}
+
+  #cm-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--acc);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;opacity:0;transition:.2s;z-index:500;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+  #cm-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .note-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px}
+  .note-card h4{margin:0 0 6px;font-size:14px}.note-card p{margin:0;font-size:12px;color:var(--text2);line-height:1.7}
+  code{background:var(--bg3);padding:1px 5px;border-radius:4px;font-size:11px}
+</style>
+</head>
+<body>
+
+<!-- ログイン -->
+<div id="cm-login">
+  <div class="lc">
+    <div class="lg">👥 <span class="sf">Core</span>Members</div>
+    <div class="sub">社員名簿＋組織図（小林モータース）</div>
+    <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
+    <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
+    <div class="ver">CoreMembers v0.1.0</div>
+  </div>
+</div>
+<div id="cm-denied">
+  <div class="lc">
+    <div class="lg">🔒 権限がありません</div>
+    <div class="sub">このアカウントは小林モータースの名簿に登録されていません。</div>
+    <button class="btn" style="background:transparent;border:1px solid rgba(195,154,124,.4)" onclick="doLogout()">別のアカウントでログイン</button>
+    <div class="note">管理者（ゆうた）にCoreFlowメンバー登録を依頼してください。</div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="topbar">
+    <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.1.0</span></div>
+    <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
+    <div class="spacer"></div>
+    <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
+    <div class="topbar-user">
+      <span class="av" id="u-av"></span>
+      <span class="uname" id="me-name"></span>
+      <span class="sync-indicator sync-online" id="sync-ind" title="リアルタイム同期中"><span class="sync-dot"></span><span class="sync-text">同期</span></span>
+      <button class="help-btn" onclick="showView('about')" title="ヘルプ">？</button>
+      <button class="btn-sm" onclick="doLogout()">ログアウト</button>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div class="si-title">名簿</div>
+    <div class="si-item active" data-v="members" onclick="showView('members')"><span class="ic">👥</span><span>社員名簿</span></div>
+    <div class="si-title">マスター</div>
+    <div class="si-item" data-v="org" onclick="showView('org')"><span class="ic">🏢</span><span>組織（部署）</span></div>
+    <div class="si-item" data-v="locations" onclick="showView('locations')"><span class="ic">📍</span><span>場所マスター</span></div>
+    <div class="si-title">情報</div>
+    <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このアプリについて</span></div>
+    <div data-cf-launcher data-current="coremembers"></div>
+  </div>
+
+  <div id="main">
+    <!-- 社員名簿 -->
+    <section id="view-members" class="view active">
+      <div class="vhead">
+        <div class="vtitle">👥 社員名簿 <span id="mem-count" style="font-size:12px;color:var(--text3);font-weight:500"></span></div>
+        <input class="search" id="mem-search" placeholder="名前・カナ・役職で検索" oninput="renderMembers()">
+        <label class="toggle" style="font-size:12px;color:var(--text2)"><input type="checkbox" id="mem-onlyactive" checked onchange="renderMembers()"> 在籍のみ</label>
+        <div class="spacer"></div>
+        <button class="vh-btn" id="btn-seed" onclick="seedFromPortal()" title="CoreFlow名簿から社員を取り込み">📥 portalMembersから取り込み</button>
+      </div>
+      <div id="members-list"></div>
+    </section>
+
+    <!-- 組織 -->
+    <section id="view-org" class="view">
+      <div class="vhead"><div class="vtitle">🏢 組織（部署）</div><div class="spacer"></div><button class="vh-btn primary" onclick="openDeptModal(null)">＋ 部署を追加</button></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 12px">部・課・拠点を登録。社員の所属やMHS/PitFlowの「課で並べる」の基準になります。</p>
+      <div id="org-list"></div>
+    </section>
+
+    <!-- 場所マスター -->
+    <section id="view-locations" class="view">
+      <div class="vhead"><div class="vtitle">📍 場所マスター</div><div class="spacer"></div><button class="vh-btn primary" onclick="openLocModal(null)">＋ 場所を追加</button></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 12px">陸運局・部品商・拠点・顧客先など。社員の「行ける場所」やMHSの場所軸・PitFlow配車の行き先に使います。方面（area）で同方面のまとめ取りに。</p>
+      <div id="loc-list"></div>
+    </section>
+
+    <!-- About -->
+    <section id="view-about" class="view">
+      <div class="vhead"><div class="vtitle">ℹ️ CoreMembers について</div></div>
+      <div class="note-card">
+        <h4>👥 会社の人と組織の真実（マスター）</h4>
+        <p>CoreMembers は「全社員＋組織図＋雇用＋運転スキル＋行ける場所」を持つ会社の正式名簿です。ログインしない週2バイトもここに登録できます（名簿に載るだけ）。<br><br>
+        <b>役割分担</b>：人と組織＝CoreMembers／アプリのログイン可否＝CoreFlow（portalMembers）。MHSの担当・自動課・人別並べ、PitFlowの配車は、ここの情報を読みます。人物Memory／AI集約は今後（Phase4-5）。</p>
+      </div>
+      <div class="note-card">
+        <h4>接続状況</h4>
+        <p id="about-conn">本番接続。Firebase（carflow-9d500 相乗り）。データ＝<code>coreMembers</code>／<code>coreDepts</code>／<code>coreLocations</code>。入室＝portalMembers判定。</p>
+        <p style="margin-top:8px"><button class="btn-sm" onclick="doLogout()">⏻ ログアウト</button></p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- 社員 編集モーダル -->
+<div class="mbg" id="member-modal" onclick="if(event.target.id==='member-modal')closeMemberModal()">
+  <div class="mbox">
+    <div class="mhead"><span class="mt" id="mm-title">社員</span><button class="x" onclick="closeMemberModal()">✕</button></div>
+    <div class="mbody" id="mm-body"></div>
+    <div class="mfoot"><button class="btn-del" id="mm-del" style="display:none" onclick="deleteMemberCur()">🗑 削除</button><div class="grow"></div><button class="btn-ghost" onclick="closeMemberModal()">キャンセル</button><button class="btn-save" onclick="saveMemberForm()">保存</button></div>
+  </div>
+</div>
+
+<!-- 部署 編集モーダル -->
+<div class="mbg" id="dept-modal" onclick="if(event.target.id==='dept-modal')closeDeptModal()">
+  <div class="mbox" style="width:min(94vw,440px)">
+    <div class="mhead"><span class="mt" id="dm-title">部署</span><button class="x" onclick="closeDeptModal()">✕</button></div>
+    <div class="mbody" id="dm-body"></div>
+    <div class="mfoot"><button class="btn-del" id="dm-del" style="display:none" onclick="deleteDeptCur()">🗑 削除</button><div class="grow"></div><button class="btn-ghost" onclick="closeDeptModal()">キャンセル</button><button class="btn-save" onclick="saveDeptForm()">保存</button></div>
+  </div>
+</div>
+
+<!-- 場所 編集モーダル -->
+<div class="mbg" id="loc-modal" onclick="if(event.target.id==='loc-modal')closeLocModal()">
+  <div class="mbox" style="width:min(94vw,440px)">
+    <div class="mhead"><span class="mt" id="lm-title">場所</span><button class="x" onclick="closeLocModal()">✕</button></div>
+    <div class="mbody" id="lm-body"></div>
+    <div class="mfoot"><button class="btn-del" id="lm-del" style="display:none" onclick="deleteLocCur()">🗑 削除</button><div class="grow"></div><button class="btn-ghost" onclick="closeLocModal()">キャンセル</button><button class="btn-save" onclick="saveLocForm()">保存</button></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="js/firebase-init.js?v=1"></script>
+<script src="js/launcher.js?v=4"></script>
+<script>
+/* ===== CoreMembers v0.1.0（Phase1：名簿＋組織図＋場所マスター・本番Firebase） ===== */
+const COMPANY_ID='kobayashi_motors';
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escA(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function toast(msg){var t=document.getElementById('cm-toast');t.textContent=msg;t.className='show';clearTimeout(toast._t);toast._t=setTimeout(function(){t.className='';},1700);}
+function _normEmail(s){try{return String(s||'').normalize('NFKC').trim().toLowerCase();}catch(e){return String(s||'').trim().toLowerCase();}}
+function setSyncState(on){var el=document.getElementById('sync-ind');if(!el)return;el.classList.toggle('sync-offline',!on);var t=el.querySelector('.sync-text');if(t)t.textContent=on?'同期':'未接続';}
+try{window.addEventListener('online',function(){setSyncState(true);});window.addEventListener('offline',function(){setSyncState(false);});}catch(e){}
+function toggleTheme(){var r=document.documentElement,c=r.getAttribute('data-theme')||'dark',n=c==='dark'?'light':'dark';r.setAttribute('data-theme',n);document.querySelector('.theme-toggle').textContent=n==='dark'?'🌙':'☀️';}
+function toggleSidebar(){document.body.classList.toggle('sb-collapsed');}
+
+/* ---------- 認証＋入室 ---------- */
+let IS_ADMIN=false;
+function loginWithGoogle(){ if(!window.fb||!window.fb.auth){document.getElementById('login-msg').textContent='接続準備中です。少し待って再度お試しください。';return;} var p=new firebase.auth.GoogleAuthProvider(); window.fb.auth.signInWithPopup(p).catch(function(err){ console.error('[CM login]',err); document.getElementById('login-msg').textContent=(err&&err.code==='auth/unauthorized-domain')?'このURLがFirebaseに未登録です（承認済みドメイン設定が必要）。':'ログインに失敗しました。'; }); }
+function doLogout(){ if(window.fb&&window.fb.auth)window.fb.auth.signOut(); else location.reload(); }
+function showLoginScreen(){ document.getElementById('cm-login').style.display='flex'; document.getElementById('cm-denied').style.display='none'; document.getElementById('app').style.display='none'; }
+function showDeniedScreen(){ document.getElementById('cm-login').style.display='none'; document.getElementById('cm-denied').style.display='flex'; document.getElementById('app').style.display='none'; }
+async function checkAccess(user){
+  try{
+    var coll=window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers');
+    var doc=await coll.doc(user.uid).get();
+    if(doc.exists){ var d=doc.data(); if(d.active!==false){ d.id=doc.id; return d; } }
+    if(user.email){
+      var lo=_normEmail(user.email);
+      try{
+        var snap=await coll.where('email','==',user.email).limit(1).get();
+        if(!snap.empty){ var d2=snap.docs[0].data(); if(d2.active!==false){ d2.id=snap.docs[0].id; return d2; } }
+        if(lo!==user.email){ snap=await coll.where('email','==',lo).limit(1).get(); if(!snap.empty){ var d3=snap.docs[0].data(); if(d3.active!==false){ d3.id=snap.docs[0].id; return d3; } } }
+        var all=await coll.limit(100).get(),matched=null; all.forEach(function(s){ if(matched)return; var e=_normEmail(String((s.data()||{}).email||'')); if(e&&e===lo)matched=s; }); if(matched){ var d4=matched.data(); if(d4.active!==false){ d4.id=matched.id; return d4; } }
+      }catch(e2){ console.warn('[CM] email検索エラー',e2); }
+    }
+    return null;
+  }catch(e){ console.error('[CM] checkAccess失敗',e); return null; }
+}
+async function enterApp(member,user){
+  document.getElementById('cm-login').style.display='none'; document.getElementById('cm-denied').style.display='none'; document.getElementById('app').style.display='grid';
+  IS_ADMIN=!!(member&&(member.admin===true||member.master===true));
+  document.getElementById('me-name').textContent=(member&&member.name)||user.displayName||user.email||'ユーザー';
+  var av=document.getElementById('u-av'); var ph=member&&(member.photo||member.photoURL); av.innerHTML=ph?('<img src="'+ph+'" alt="">'):esc((member&&member.ini)||String((member&&member.name)||'？').charAt(0));
+  if(!IS_ADMIN){ ['btn-new','btn-seed'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display='none';}); }
+  try{ await window.fb.db.collection('companies').doc(COMPANY_ID).collection('userPrefs').doc(user.uid).set({memberId:member.id,memberEmail:(member.email||user.email||'')},{merge:true}); }catch(e){}
+  await loadPortal();
+  subscribeDepts(); subscribeLocations(); subscribeMembers();
+  setSyncState(navigator.onLine!==false);
+  showView('members');
+}
+function wireAuth(){
+  if(!window.fb||!window.fb.auth){ var lm=document.getElementById('login-msg'); if(lm)lm.textContent='接続準備に失敗。再読み込みしてください。'; return; }
+  window.fb.auth.onAuthStateChanged(async function(user){
+    if(!user){ window.fb.currentUser=null; showLoginScreen(); return; }
+    window.fb.currentUser=user;
+    var member=await checkAccess(user);
+    if(member){ window.fb.currentMember=member; await enterApp(member,user); }
+    else { await window.fb.auth.signOut().catch(function(){}); showDeniedScreen(); }
+  });
+}
+
+/* ---------- マスター定義 ---------- */
+const EMP_TYPES=[['officer','役員'],['fulltime','正社員'],['contract','契約'],['parttime','パート'],['arbeit','アルバイト'],['external','外部委託']];
+const STATUSES=[['active','在籍'],['leave','休職'],['left','退職']];
+const LICENSES=['普通','準中型','中型','大型','けん引','普通二種','大型二種','フォークリフト'];
+const SIZES=['軽','普通','1BOX','ハイエース','2t','特殊'];
+const DEPT_TYPES=[['division','部'],['section','課'],['team','班'],['site','拠点']];
+const LOC_CATS=[['rikuun','陸運局'],['parts','部品商'],['site','自社拠点'],['customer','顧客先'],['other','その他']];
+function empLabel(v){var x=EMP_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'');}
+function statusLabel(v){var x=STATUSES.find(function(e){return e[0]===v;});return x?x[1]:(v||'在籍');}
+function deptTypeLabel(v){var x=DEPT_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'課');}
+function locCatLabel(v){var x=LOC_CATS.find(function(e){return e[0]===v;});return x?x[1]:(v||'その他');}
+
+/* ---------- データ層 ---------- */
+let MEMBERS=[], DEPTS=[], LOCS=[], PORTAL=[];
+function memCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('coreMembers'); }
+function deptCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('coreDepts'); }
+function locCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('coreLocations'); }
+function portalCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers'); }
+let _muns=null,_duns=null,_luns=null;
+function subscribeMembers(){ if(_muns)return; _muns=memCol().onSnapshot(function(s){ MEMBERS=[]; s.forEach(function(d){var m=d.data()||{};m.id=d.id;MEMBERS.push(m);}); MEMBERS.sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='members')renderMembers(); else if(curView==='org')renderOrg(); }, function(e){console.error('[CM] members',e);setSyncState(false);}); }
+function subscribeDepts(){ if(_duns)return; _duns=deptCol().onSnapshot(function(s){ DEPTS=[]; s.forEach(function(d){var x=d.data()||{};x.id=d.id;DEPTS.push(x);}); DEPTS.sort(function(a,b){return (a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='org')renderOrg(); if(curView==='members')renderMembers(); }, function(e){console.error('[CM] depts',e);setSyncState(false);}); }
+function subscribeLocations(){ if(_luns)return; _luns=locCol().onSnapshot(function(s){ LOCS=[]; s.forEach(function(d){var x=d.data()||{};x.id=d.id;LOCS.push(x);}); LOCS.sort(function(a,b){return (a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='locations')renderLocations(); }, function(e){console.error('[CM] locs',e);setSyncState(false);}); }
+function loadPortal(){ return portalCol().get().then(function(s){ PORTAL=[]; s.forEach(function(d){var m=d.data()||{};m.id=d.id;PORTAL.push(m);}); }).catch(function(e){ console.warn('[CM] portal読込失敗',e); PORTAL=[]; }); }
+
+function memberById(id){ for(var i=0;i<MEMBERS.length;i++)if(MEMBERS[i].id===id)return MEMBERS[i]; return null; }
+function deptById(id){ for(var i=0;i<DEPTS.length;i++)if(DEPTS[i].id===id)return DEPTS[i]; return null; }
+function locById(id){ for(var i=0;i<LOCS.length;i++)if(LOCS[i].id===id)return LOCS[i]; return null; }
+function deptName(id){ var d=deptById(id); return d?d.name:''; }
+function deptColor(id){ var d=deptById(id); return (d&&d.color)||'#64748b'; }
+function avatarHTML(m,sz){ sz=sz||38; if(m&&m.photo)return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px"><img src="'+m.photo+'" alt=""></span>'; var bg=(m&&m.color)||'#ea580c'; return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.4)+'px">'+esc((m&&m.ini)||String((m&&m.name)||'？').charAt(0))+'</span>'; }
+
+/* ---------- 画面切替 ---------- */
+let curView='members';
+function showView(v){
+  curView=v;
+  document.querySelectorAll('.view').forEach(function(s){s.classList.remove('active');});
+  document.querySelectorAll('.si-item').forEach(function(i){i.classList.remove('active');});
+  var el=document.getElementById('view-'+v); if(el)el.classList.add('active');
+  document.querySelectorAll('.si-item[data-v="'+v+'"]').forEach(function(i){i.classList.add('active');});
+  if(v==='members')renderMembers(); else if(v==='org')renderOrg(); else if(v==='locations')renderLocations();
+}
+
+/* ---------- 社員名簿 ---------- */
+function renderMembers(){
+  var q=_normEmail((document.getElementById('mem-search')||{}).value||'').replace(/\s/g,'');
+  var onlyActive=(document.getElementById('mem-onlyactive')||{}).checked;
+  var list=MEMBERS.filter(function(m){
+    if(onlyActive && m.status==='left')return false;
+    if(q){ var hay=_normEmail((m.name||'')+(m.kana||'')+(m.roleTitle||'')).replace(/\s/g,''); if(hay.indexOf(q)<0)return false; }
+    return true;
+  });
+  document.getElementById('mem-count').textContent='（'+list.length+'人）';
+  // 部署ごとにグループ化
+  var groups={}, order=[];
+  DEPTS.forEach(function(d){ groups[d.id]=[]; order.push(d.id); });
+  groups['_none']=[];
+  list.forEach(function(m){ var k=(m.primaryDeptId&&groups[m.primaryDeptId])?m.primaryDeptId:'_none'; groups[k].push(m); });
+  var h='';
+  order.concat(['_none']).forEach(function(k){
+    var ms=groups[k]; if(!ms||!ms.length)return;
+    var nm=(k==='_none')?'未所属':deptName(k); var col=(k==='_none')?'#64748b':deptColor(k);
+    h+='<div class="dept-group"><div class="dept-h"><span class="dot" style="background:'+col+'"></span>'+esc(nm)+'<span class="cnt">'+ms.length+'人</span></div>';
+    ms.forEach(function(m){ h+=memberCardHTML(m); });
+    h+='</div>';
+  });
+  if(!list.length) h='<div class="empty">該当する社員がいません。'+(IS_ADMIN?'「＋ 新規社員」か「📥 取り込み」で登録してください。':'')+'</div>';
+  document.getElementById('members-list').innerHTML=h;
+}
+function memberCardHTML(m){
+  var emp=empLabel(m.employmentType);
+  var statusBadge = m.status==='left'?'<span class="badge b-off">退職</span>':(m.status==='leave'?'<span class="badge b-leave">休職</span>':'');
+  var login = m.portalMemberId?'<span class="badge b-login">ログイン可</span>':'<span class="badge b-nologin">非ログイン</span>';
+  var noplan = (m.showInSchedule===false)?'<span class="badge b-noplan">予定非表示</span>':'';
+  var dr=[]; if(m.mt)dr.push('MT可'); if(m.licenses&&m.licenses.length)dr.push(m.licenses.slice(0,3).join('/'));
+  return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+avatarHTML(m,38).replace('mav','mav')+
+    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+statusBadge+'</div>'+
+    '<div class="mmeta">'+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
+}
+
+/* 社員モーダル */
+let ME=null;
+function openMemberModal(id){
+  if(id){ var src=memberById(id); ME=src?JSON.parse(JSON.stringify(src)):null; if(!ME)return; }
+  else { if(!IS_ADMIN){toast('編集は管理者のみ');return;} ME={id:null,name:'',kana:'',color:'#ea580c',primaryDeptId:'',subDeptIds:[],roleTitle:'',managerId:'',employmentType:'fulltime',status:'active',joinedAt:'',weeklyDays:'',showInSchedule:true,schedulable:true,ext:'',mobile:'',emailWork:'',licenses:[],mt:false,drivableSizes:[],drivingConfidence:'',drivingNotes:'',goableLocationIds:[],homeArea:'',certs:[],skillTags:[],strengths:'',weaknesses:'',portalMemberId:''}; }
+  ['licenses','subDeptIds','drivableSizes','goableLocationIds','certs','skillTags'].forEach(function(k){ if(!Array.isArray(ME[k]))ME[k]=[]; });
+  document.getElementById('mm-title').textContent=id?'社員を編集':'新規社員';
+  document.getElementById('mm-del').style.display=(id&&IS_ADMIN)?'inline-block':'none';
+  renderMemberForm();
+  document.getElementById('member-modal').classList.add('show');
+}
+function closeMemberModal(){ document.getElementById('member-modal').classList.remove('show'); }
+function pickH(group,val,label,on){ return '<span class="pick'+(on?' on':'')+'" onclick="mePick(\''+group+'\',\''+escA(val)+'\',this)">'+esc(label)+'</span>'; }
+function renderMemberForm(){
+  var ro=!IS_ADMIN;
+  var deptOpts='<option value="">（未所属）</option>'+DEPTS.map(function(d){return '<option value="'+d.id+'"'+(ME.primaryDeptId===d.id?' selected':'')+'>'+esc(d.name)+'</option>';}).join('');
+  var mgrOpts='<option value="">（なし）</option>'+MEMBERS.filter(function(x){return x.id!==ME.id;}).map(function(x){return '<option value="'+x.id+'"'+(ME.managerId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+  var empOpts=EMP_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(ME.employmentType===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
+  var stOpts=STATUSES.map(function(e){return '<option value="'+e[0]+'"'+((ME.status||'active')===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
+  var confOpts='<option value="">—</option>'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(String(ME.drivingConfidence)===String(n)?' selected':'')+'>'+n+'</option>';}).join('');
+  var portalOpts='<option value="">（なし・ログインしない）</option>'+PORTAL.map(function(p){var used=MEMBERS.find(function(x){return x.portalMemberId===p.id&&x.id!==ME.id;});return '<option value="'+p.id+'"'+(ME.portalMemberId===p.id?' selected':'')+(used?' disabled':'')+'>'+esc(p.name||p.email||p.id)+(used?'（紐付済）':'')+'</option>';}).join('');
+  var licChips=LICENSES.map(function(l){return pickH('lic',l,l,ME.licenses.indexOf(l)>=0);}).join('');
+  var sizeChips=SIZES.map(function(s){return pickH('size',s,s,ME.drivableSizes.indexOf(s)>=0);}).join('');
+  var subChips=DEPTS.map(function(d){return pickH('sub',d.id,d.name,ME.subDeptIds.indexOf(d.id)>=0);}).join('');
+  var locChips=LOCS.length?LOCS.map(function(l){return pickH('loc',l.id,l.name+(l.area?'('+l.area+')':''),ME.goableLocationIds.indexOf(l.id)>=0);}).join(''):'<span style="font-size:11px;color:var(--text3)">場所マスターが未登録です（📍場所マスターで追加）</span>';
+  var dis=ro?' disabled':'';
+  document.getElementById('mm-body').innerHTML=
+    '<div class="sec-h">基本</div>'+
+    '<div class="row2"><div class="fld"><label>氏名 *</label><input type="text" id="me-name" value="'+esc(ME.name)+'"'+dis+'></div><div class="fld"><label>カナ</label><input type="text" id="me-kana" value="'+esc(ME.kana||'')+'"'+dis+'></div></div>'+
+    '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>アイコン色</label><input type="text" id="me-color" value="'+esc(ME.color||'#ea580c')+'" placeholder="#ea580c"'+dis+'></div></div>'+
+    '<div class="sec-h">組織</div>'+
+    '<div class="row2"><div class="fld"><label>所属（主）</label><select id="me-dept"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div></div>'+
+    '<div class="fld"><label>兼務（複数可）</label><div class="seg-pick">'+(subChips||'<span style="font-size:11px;color:var(--text3)">部署未登録</span>')+'</div></div>'+
+    '<div class="sec-h">雇用</div>'+
+    '<div class="row3"><div class="fld"><label>雇用形態</label><select id="me-emp"'+dis+'>'+empOpts+'</select></div><div class="fld"><label>在籍状況</label><select id="me-status"'+dis+'>'+stOpts+'</select></div><div class="fld"><label>週何日</label><input type="number" id="me-weekly" value="'+esc(ME.weeklyDays||'')+'" min="0" max="7"'+dis+'></div></div>'+
+    '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
+    '<div class="sec-h">連絡先（社内）</div>'+
+    '<div class="row3"><div class="fld"><label>内線</label><input type="text" id="me-ext" value="'+esc(ME.ext||'')+'"'+dis+'></div><div class="fld"><label>携帯</label><input type="text" id="me-mobile" value="'+esc(ME.mobile||'')+'"'+dis+'></div><div class="fld"><label>メール</label><input type="text" id="me-email" value="'+esc(ME.emailWork||'')+'"'+dis+'></div></div>'+
+    '<div class="sec-h">運転スキル（MHS/PitFlow配車が参照）</div>'+
+    '<div class="fld"><label>免許・運転資格</label><div class="seg-pick">'+licChips+'</div></div>'+
+    '<div class="fld"><label>運転できるサイズ</label><div class="seg-pick">'+sizeChips+'</div></div>'+
+    '<div class="row2"><div class="fld"><label>MT</label><div style="padding-top:6px"><label class="toggle"><input type="checkbox" id="me-mt" '+(ME.mt?'checked':'')+dis+'> MT運転可</label></div></div><div class="fld"><label>運転得意度（1-5）</label><select id="me-conf"'+dis+'>'+confOpts+'</select></div></div>'+
+    '<div class="fld"><label>運転メモ</label><input type="text" id="me-dnotes" value="'+esc(ME.drivingNotes||'')+'" placeholder="例：高速苦手 / 大型は要相談"'+dis+'></div>'+
+    '<div class="sec-h">行ける場所（場所マスター参照）</div>'+
+    '<div class="fld"><label>行ける場所</label><div class="seg-pick">'+locChips+'</div></div>'+
+    '<div class="fld"><label>生活圏・方面</label><input type="text" id="me-home" value="'+esc(ME.homeArea||'')+'" placeholder="例：柏方面"'+dis+'></div>'+
+    '<div class="sec-h">スキル・資格</div>'+
+    '<div class="row2"><div class="fld"><label>資格（カンマ区切り）</label><input type="text" id="me-certs" value="'+esc((ME.certs||[]).join(', '))+'" placeholder="整備士2級, 検査員"'+dis+'></div><div class="fld"><label>得意タグ（カンマ区切り）</label><input type="text" id="me-skills" value="'+esc((ME.skillTags||[]).join(', '))+'" placeholder="板金, 接客, 電装"'+dis+'></div></div>'+
+    '<div class="row2"><div class="fld"><label>得意</label><textarea id="me-str"'+dis+'>'+esc(ME.strengths||'')+'</textarea></div><div class="fld"><label>苦手・注意</label><textarea id="me-weak"'+dis+'>'+esc(ME.weaknesses||'')+'</textarea></div></div>'+
+    '<div class="sec-h">アプリ連携</div>'+
+    '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">ログインさせる人だけ紐づけ。週2バイト等は「なし」でOK。</div></div>'+
+    (ro?'<div style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</div>':'');
+}
+function mePick(group,val,el){
+  var map={lic:'licenses',size:'drivableSizes',sub:'subDeptIds',loc:'goableLocationIds'};
+  var key=map[group]; if(!key)return; var a=ME[key]; var i=a.indexOf(val); if(i>=0)a.splice(i,1); else a.push(val); el.classList.toggle('on');
+}
+function _arr(id){ var v=(document.getElementById(id)||{}).value||''; return v.split(',').map(function(s){return s.trim();}).filter(Boolean); }
+function saveMemberForm(){
+  if(!IS_ADMIN){ toast('編集は管理者のみ'); return; }
+  var name=(document.getElementById('me-name').value||'').trim();
+  if(!name){ alert('氏名を入力してください。'); return; }
+  ME.name=name;
+  ME.kana=(document.getElementById('me-kana').value||'').trim();
+  ME.roleTitle=(document.getElementById('me-role').value||'').trim();
+  ME.color=(document.getElementById('me-color').value||'#ea580c').trim();
+  ME.ini=name.charAt(0);
+  ME.primaryDeptId=document.getElementById('me-dept').value||'';
+  ME.managerId=document.getElementById('me-mgr').value||'';
+  ME.employmentType=document.getElementById('me-emp').value||'fulltime';
+  ME.status=document.getElementById('me-status').value||'active';
+  ME.weeklyDays=document.getElementById('me-weekly').value||'';
+  ME.joinedAt=document.getElementById('me-joined').value||'';
+  ME.showInSchedule=document.getElementById('me-show').checked;
+  ME.schedulable=document.getElementById('me-sched').checked;
+  ME.ext=(document.getElementById('me-ext').value||'').trim();
+  ME.mobile=(document.getElementById('me-mobile').value||'').trim();
+  ME.emailWork=(document.getElementById('me-email').value||'').trim();
+  ME.mt=document.getElementById('me-mt').checked;
+  ME.drivingConfidence=document.getElementById('me-conf').value||'';
+  ME.drivingNotes=(document.getElementById('me-dnotes').value||'').trim();
+  ME.homeArea=(document.getElementById('me-home').value||'').trim();
+  ME.certs=_arr('me-certs'); ME.skillTags=_arr('me-skills');
+  ME.strengths=(document.getElementById('me-str').value||'').trim();
+  ME.weaknesses=(document.getElementById('me-weak').value||'').trim();
+  ME.portalMemberId=document.getElementById('me-portal').value||'';
+  var data=Object.assign({},ME); var id=data.id; delete data.id;
+  data.updatedAt=window.fb.serverTimestamp(); data.updatedBy=(window.fb.currentUser&&window.fb.currentUser.uid)||null;
+  var ref=id?memCol().doc(id):memCol().doc();
+  ref.set(data,{merge:true}).then(function(){ closeMemberModal(); toast('保存しました'); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
+}
+function deleteMemberCur(){ if(!IS_ADMIN||!ME||!ME.id)return; if(!confirm(ME.name+' を名簿から削除しますか？'))return; memCol().doc(ME.id).delete().then(function(){ closeMemberModal(); toast('削除しました'); }).catch(function(e){ console.error(e); toast('⚠ 削除に失敗'); }); }
+
+/* ---------- 組織（部署） ---------- */
+function renderOrg(){
+  var h='';
+  if(!DEPTS.length){ h='<div class="empty">部署が未登録です。'+(IS_ADMIN?'「＋ 部署を追加」から登録してください（例：整備部 > 1課/2課、受付、車販、デザイン）。':'')+'</div>'; }
+  DEPTS.forEach(function(d){
+    var indent=d.parentId?'margin-left:22px;':'';
+    var leader=d.leaderMemberId?memberById(d.leaderMemberId):null;
+    var cnt=MEMBERS.filter(function(m){return m.primaryDeptId===d.id;}).length;
+    h+='<div class="lrow" style="'+indent+'"><span class="dot" style="background:'+((d.color)||'#64748b')+'"></span><div class="grow"><div class="lt">'+esc(d.name)+' <span style="font-size:11px;color:var(--text3)">'+deptTypeLabel(d.type)+'</span></div><div class="ls">'+cnt+'人'+(leader?'・責任者：'+esc(leader.name):'')+(d.parentId?'・上位：'+esc(deptName(d.parentId)):'')+'</div></div>'+(IS_ADMIN?'<button class="iconbtn" onclick="openDeptModal(\''+escA(d.id)+'\')">✏️</button>':'')+'</div>';
+  });
+  document.getElementById('org-list').innerHTML=h;
+}
+let DE=null;
+function openDeptModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=deptById(id);DE=s?JSON.parse(JSON.stringify(s)):null;if(!DE)return;}else{DE={id:null,name:'',type:'section',parentId:'',leaderMemberId:'',color:'#1db97a',order:DEPTS.length};} document.getElementById('dm-title').textContent=id?'部署を編集':'部署を追加'; document.getElementById('dm-del').style.display=id?'inline-block':'none'; var typeOpts=DEPT_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(DE.type===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); var parentOpts='<option value="">（最上位）</option>'+DEPTS.filter(function(x){return x.id!==DE.id;}).map(function(x){return '<option value="'+x.id+'"'+(DE.parentId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); var leadOpts='<option value="">（なし）</option>'+MEMBERS.map(function(x){return '<option value="'+x.id+'"'+(DE.leaderMemberId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); document.getElementById('dm-body').innerHTML='<div class="fld"><label>部署名 *</label><input type="text" id="de-name" value="'+esc(DE.name)+'" placeholder="例：1課 / 整備部 / 受付"></div><div class="row2"><div class="fld"><label>種別</label><select id="de-type">'+typeOpts+'</select></div><div class="fld"><label>色</label><input type="text" id="de-color" value="'+esc(DE.color||'#1db97a')+'"></div></div><div class="row2"><div class="fld"><label>上位部署</label><select id="de-parent">'+parentOpts+'</select></div><div class="fld"><label>責任者</label><select id="de-leader">'+leadOpts+'</select></div></div>'; document.getElementById('dept-modal').classList.add('show'); }
+function closeDeptModal(){ document.getElementById('dept-modal').classList.remove('show'); }
+function saveDeptForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('de-name').value||'').trim(); if(!name){alert('部署名を入力してください。');return;} DE.name=name; DE.type=document.getElementById('de-type').value; DE.color=(document.getElementById('de-color').value||'#1db97a').trim(); DE.parentId=document.getElementById('de-parent').value||''; DE.leaderMemberId=document.getElementById('de-leader').value||''; var data=Object.assign({},DE);var id=data.id;delete data.id; data.updatedAt=window.fb.serverTimestamp(); var ref=id?deptCol().doc(id):deptCol().doc(); ref.set(data,{merge:true}).then(function(){closeDeptModal();toast('保存しました');}).catch(function(e){console.error(e);toast('⚠ 保存に失敗');}); }
+function deleteDeptCur(){ if(!IS_ADMIN||!DE||!DE.id)return; if(!confirm(DE.name+' を削除しますか？（所属社員は未所属になります）'))return; deptCol().doc(DE.id).delete().then(function(){closeDeptModal();toast('削除しました');}).catch(function(e){console.error(e);toast('⚠ 削除に失敗');}); }
+
+/* ---------- 場所マスター ---------- */
+function renderLocations(){
+  var h='';
+  if(!LOCS.length){ h='<div class="empty">場所が未登録です。'+(IS_ADMIN?'「＋ 場所を追加」から（例：陸運局A(柏)・◯◯部品商・本社）。':'')+'</div>'; }
+  LOCS.forEach(function(l){
+    h+='<div class="lrow"><div class="grow"><div class="lt">'+esc(l.name)+' <span class="badge b-emp">'+locCatLabel(l.category)+'</span>'+(l.active===false?'<span class="badge b-off">無効</span>':'')+'</div><div class="ls">'+(l.area?'方面：'+esc(l.area):'')+(l.address?'・'+esc(l.address):'')+(l.memo?'・'+esc(l.memo):'')+'</div></div>'+(IS_ADMIN?'<button class="iconbtn" onclick="openLocModal(\''+escA(l.id)+'\')">✏️</button>':'')+'</div>';
+  });
+  document.getElementById('loc-list').innerHTML=h;
+}
+let LE=null;
+function openLocModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=locById(id);LE=s?JSON.parse(JSON.stringify(s)):null;if(!LE)return;}else{LE={id:null,name:'',category:'rikuun',area:'',address:'',memo:'',order:LOCS.length,active:true};} document.getElementById('lm-title').textContent=id?'場所を編集':'場所を追加'; document.getElementById('lm-del').style.display=id?'inline-block':'none'; var catOpts=LOC_CATS.map(function(e){return '<option value="'+e[0]+'"'+(LE.category===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); document.getElementById('lm-body').innerHTML='<div class="fld"><label>場所名 *</label><input type="text" id="le-name" value="'+esc(LE.name)+'" placeholder="例：陸運局A(柏)"></div><div class="row2"><div class="fld"><label>カテゴリ</label><select id="le-cat">'+catOpts+'</select></div><div class="fld"><label>方面（area）</label><input type="text" id="le-area" value="'+esc(LE.area||'')+'" placeholder="例：柏方面"></div></div><div class="fld"><label>住所</label><input type="text" id="le-addr" value="'+esc(LE.address||'')+'"></div><div class="fld"><label>メモ</label><input type="text" id="le-memo" value="'+esc(LE.memo||'')+'"></div><div class="fld"><label class="toggle"><input type="checkbox" id="le-active" '+(LE.active!==false?'checked':'')+'> 有効</label></div>'; document.getElementById('loc-modal').classList.add('show'); }
+function closeLocModal(){ document.getElementById('loc-modal').classList.remove('show'); }
+function saveLocForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('le-name').value||'').trim(); if(!name){alert('場所名を入力してください。');return;} LE.name=name; LE.category=document.getElementById('le-cat').value; LE.area=(document.getElementById('le-area').value||'').trim(); LE.address=(document.getElementById('le-addr').value||'').trim(); LE.memo=(document.getElementById('le-memo').value||'').trim(); LE.active=document.getElementById('le-active').checked; var data=Object.assign({},LE);var id=data.id;delete data.id; data.updatedAt=window.fb.serverTimestamp(); var ref=id?locCol().doc(id):locCol().doc(); ref.set(data,{merge:true}).then(function(){closeLocModal();toast('保存しました');}).catch(function(e){console.error(e);toast('⚠ 保存に失敗');}); }
+function deleteLocCur(){ if(!IS_ADMIN||!LE||!LE.id)return; if(!confirm(LE.name+' を削除しますか？'))return; locCol().doc(LE.id).delete().then(function(){closeLocModal();toast('削除しました');}).catch(function(e){console.error(e);toast('⚠ 削除に失敗');}); }
+
+/* ---------- portalMembers 取り込み ---------- */
+async function seedFromPortal(){
+  if(!IS_ADMIN){ toast('取り込みは管理者のみ'); return; }
+  await loadPortal();
+  var linked={}; MEMBERS.forEach(function(m){ if(m.portalMemberId)linked[m.portalMemberId]=true; });
+  var todo=PORTAL.filter(function(p){ return !linked[p.id]; });
+  if(!todo.length){ toast('取り込み済み（新規なし）'); return; }
+  if(!confirm('CoreFlow名簿から '+todo.length+' 人を社員名簿に取り込みます。よろしいですか？\n（既に紐づく人は対象外。組織・雇用は取り込み後に調整できます）')) return;
+  var ok=0;
+  for(var i=0;i<todo.length;i++){
+    var p=todo[i];
+    try{
+      await memCol().doc().set({ name:p.name||'(無名)', kana:'', color:p.color||'#ea580c', ini:p.ini||String(p.name||'？').charAt(0), photo:p.photo||null,
+        primaryDeptId:'', subDeptIds:[], roleTitle:p.title||'', managerId:'',
+        employmentType:'fulltime', status:'active', joinedAt:'', weeklyDays:'', showInSchedule:true, schedulable:true,
+        ext:'', mobile:'', emailWork:p.email||'',
+        licenses:[], mt:false, drivableSizes:[], drivingConfidence:'', drivingNotes:'',
+        goableLocationIds:[], homeArea:'', certs:[], skillTags:[], strengths:'', weaknesses:'',
+        portalMemberId:p.id, importedFrom:'portalMembers',
+        createdAt:window.fb.serverTimestamp(), updatedAt:window.fb.serverTimestamp(), updatedBy:(window.fb.currentUser&&window.fb.currentUser.uid)||null });
+      ok++;
+    }catch(e){ console.error('[CM] seed失敗',p,e); }
+  }
+  toast(ok+'人を取り込みました');
+}
+
+/* ---------- 起動 ---------- */
+wireAuth();
+</script>
+</body>
+</html>

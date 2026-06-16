@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "carflow-9d500"
+  },
+  "targets": {
+    "carflow-9d500": {
+      "hosting": {
+        "coremembers": [
+          "coremembers-km"
+        ]
+      }
+    }
+  }
+}
