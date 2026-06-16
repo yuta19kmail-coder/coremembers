@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.6.2">
+<meta name="app-version" content="0.7.0">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -94,6 +94,15 @@
   .badge{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px}
   .b-emp{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
   .b-dept{background:rgba(29,185,122,.14);color:#34d399;border:1px solid rgba(29,185,122,.3)}
+  /* 名簿の一覧/部署トグル＋並び替え（v0.7.0） */
+  .memview-bar{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+  .memview-tabs{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+  .mv-tab{font-size:13px;padding:6px 16px;background:var(--bg2);color:var(--text2);cursor:pointer;border:none}
+  .mv-tab.on{background:var(--acc);color:#fff;font-weight:700}
+  .mv-hint{font-size:11.5px;color:var(--text3)}
+  .reord{display:inline-flex;flex-direction:column;gap:2px;margin-right:8px;flex:none}
+  .ordbtn{width:24px;height:18px;line-height:1;font-size:10px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--text2);cursor:pointer;padding:0}
+  .ordbtn:hover{border-color:var(--acc);color:var(--text)}
   .b-off{background:rgba(239,68,68,.14);color:#fca5a5}
   .b-star{background:rgba(245,158,11,.16);color:#fcd34d;border:1px solid rgba(245,158,11,.4)}
   .b-base{background:rgba(56,211,154,.14);color:#37d39a;border:1px solid rgba(56,211,154,.4)}
@@ -225,7 +234,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.6.2</div>
+    <div class="ver">CoreMembers v0.7.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -240,7 +249,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.6.2</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -476,7 +485,9 @@ let SETTINGS={}; let _suns=null;
 function subscribeSettings(){ if(_suns)return; _suns=setDoc().onSnapshot(function(d){ SETTINGS=d.exists?(d.data()||{}):{}; if(Array.isArray(SETTINGS.locCats)&&SETTINGS.locCats.length){ LOC_CATS=SETTINGS.locCats.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { LOC_CATS=DEFAULT_LOC_CATS.slice(); } if(Array.isArray(SETTINGS.driveSkills)&&SETTINGS.driveSkills.length){ DRIVE_SKILLS=SETTINGS.driveSkills.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { DRIVE_SKILLS=DRIVE_CAPS.slice(); } if(curView==='locations')renderLocations(); if(curView==='settings')renderSettings(); if(curView==='skills')renderSkills(); }, function(e){console.error('[CM] settings',e);}); }
 function portalCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers'); }
 let _muns=null,_duns=null,_luns=null;
-function subscribeMembers(){ if(_muns)return; _muns=memCol().onSnapshot(function(s){ MEMBERS=[]; s.forEach(function(d){var m=d.data()||{};m.id=d.id;MEMBERS.push(m);}); MEMBERS.sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='members')renderMembers(); else if(curView==='org')renderOrg(); }, function(e){console.error('[CM] members',e);setSyncState(false);}); }
+// v0.7.0: 全画面共通の並び順。手動 sortOrder（数値）優先→無ければ名前順。
+function _cmpOrder(a,b){ var ao=(typeof a.sortOrder==='number')?a.sortOrder:1e9, bo=(typeof b.sortOrder==='number')?b.sortOrder:1e9; return ao-bo || String(a.name||'').localeCompare(String(b.name||''),'ja'); }
+function subscribeMembers(){ if(_muns)return; _muns=memCol().onSnapshot(function(s){ MEMBERS=[]; s.forEach(function(d){var m=d.data()||{};m.id=d.id;MEMBERS.push(m);}); MEMBERS.sort(_cmpOrder); setSyncState(true); if(curView==='members')renderMembers(); else if(curView==='org')renderOrg(); else if(curView==='skills'&&!SKILL_EDIT)renderSkills(); }, function(e){console.error('[CM] members',e);setSyncState(false);}); }
 function subscribeDepts(){ if(_duns)return; _duns=deptCol().onSnapshot(function(s){ DEPTS=[]; s.forEach(function(d){var x=d.data()||{};x.id=d.id;DEPTS.push(x);}); DEPTS.sort(function(a,b){return (a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='org')renderOrg(); if(curView==='members')renderMembers(); }, function(e){console.error('[CM] depts',e);setSyncState(false);}); }
 function subscribeLocations(){ if(_luns)return; _luns=locCol().onSnapshot(function(s){ LOCS=[]; s.forEach(function(d){var x=d.data()||{};x.id=d.id;LOCS.push(x);}); LOCS.sort(function(a,b){return (a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='locations')renderLocations(); }, function(e){console.error('[CM] locs',e);setSyncState(false);}); }
 function loadPortal(){ return portalCol().get().then(function(s){ PORTAL=[]; s.forEach(function(d){var m=d.data()||{};m.id=d.id;PORTAL.push(m);}); }).catch(function(e){ console.warn('[CM] portal読込失敗',e); PORTAL=[]; }); }
@@ -513,6 +524,35 @@ function showView(v){
 }
 
 /* ---------- 社員名簿 ---------- */
+let memView='dept';   // 'dept'=部署ごと / 'list'=一覧（共通の並び順）
+function setMemView(v){ memView=v; renderMembers(); }
+// 全員に数値 sortOrder を付与（現在の表示順ベース）。未設定が居れば振り直して保存。
+async function _ensureOrders(){
+  var list=MEMBERS.slice().sort(_cmpOrder);
+  var need=list.some(function(m){return typeof m.sortOrder!=='number';});
+  if(!need)return;
+  for(var i=0;i<list.length;i++){ var m=list[i]; if(m.sortOrder!==i){ m.sortOrder=i; try{ await saveMemberField(m.id,{sortOrder:i}); }catch(e){console.error(e);} } }
+}
+// id を上(dir=-1)/下(dir=1)へ。scope 省略=全体（一覧）／scope=部署id（'_none'含む）でその部署内だけで入れ替え。
+async function memberMove(id,dir,scope){
+  if(!IS_ADMIN){toast('編集は管理者のみ');return;}
+  await _ensureOrders();
+  var list=MEMBERS.slice().sort(_cmpOrder);
+  if(scope!==undefined&&scope!==null){ list=list.filter(function(m){ var did=memberDeptIds(m).deptId; return (did&&deptById(did))?(did===scope):(scope==='_none'); }); }
+  var idx=-1; for(var i=0;i<list.length;i++){ if(list[i].id===id){idx=i;break;} }
+  if(idx<0)return; var j=idx+dir; if(j<0||j>=list.length)return;
+  var A=list[idx], B=list[j]; var ao=A.sortOrder, bo=B.sortOrder; A.sortOrder=bo; B.sortOrder=ao;
+  try{ await saveMemberField(A.id,{sortOrder:A.sortOrder}); await saveMemberField(B.id,{sortOrder:B.sortOrder}); }
+  catch(e){ console.error(e); toast('⚠ 並び替えの保存に失敗'); }
+  MEMBERS.sort(_cmpOrder); renderMembers(); toast('並び替えました');
+}
+function reorderBtns(id,dir_first,scope){
+  // 上下ボタン（管理者のみ）。scope は文字列 or null。
+  var sc=(scope===null||scope===undefined)?'null':('\''+escA(scope)+'\'');
+  return '<span class="reord">'
+    +'<button class="ordbtn" title="上へ" onclick="event.stopPropagation();memberMove(\''+escA(id)+'\',-1,'+sc+')">▲</button>'
+    +'<button class="ordbtn" title="下へ" onclick="event.stopPropagation();memberMove(\''+escA(id)+'\',1,'+sc+')">▼</button></span>';
+}
 function renderMembers(){
   var q=_normEmail((document.getElementById('mem-search')||{}).value||'').replace(/\s/g,'');
   var onlyActive=(document.getElementById('mem-onlyactive')||{}).checked;
@@ -522,23 +562,33 @@ function renderMembers(){
     return true;
   });
   document.getElementById('mem-count').textContent='（'+list.length+'人）';
-  // 部署ごとにグループ化
-  var groups={}, order=[];
-  DEPTS.forEach(function(d){ groups[d.id]=[]; order.push(d.id); });
-  groups['_none']=[];
-  list.forEach(function(m){ var did=memberDeptIds(m).deptId; var k=(did&&groups[did])?did:'_none'; groups[k].push(m); });
+  var canReorder=IS_ADMIN && !q;   // 検索中は並び替えを隠す（部分集合での誤操作防止）
+  var toggle='<div class="memview-bar"><div class="memview-tabs">'
+    +'<button class="mv-tab'+(memView==='dept'?' on':'')+'" onclick="setMemView(\'dept\')">部署</button>'
+    +'<button class="mv-tab'+(memView==='list'?' on':'')+'" onclick="setMemView(\'list\')">一覧</button></div>'
+    +(canReorder?'<span class="mv-hint">▲▼で並び替え（全画面・スキル管理にも反映）</span>':(IS_ADMIN&&q?'<span class="mv-hint">※検索中は並び替え不可</span>':''))
+    +'</div>';
   var h='';
-  order.concat(['_none']).forEach(function(k){
-    var ms=groups[k]; if(!ms||!ms.length)return;
-    var nm=(k==='_none')?'未所属':deptName(k); var col=(k==='_none')?'#64748b':deptColor(k);
-    h+='<div class="dept-group"><div class="dept-h"><span class="dot" style="background:'+col+'"></span>'+esc(nm)+'<span class="cnt">'+ms.length+'人</span></div>';
-    ms.forEach(function(m){ h+=memberCardHTML(m); });
-    h+='</div>';
-  });
+  if(memView==='list'){
+    h=list.map(function(m){ return memberCardHTML(m, canReorder?null:undefined); }).join('');   // null=全体スコープで並び替え
+  } else {
+    var groups={}, order=[];
+    DEPTS.forEach(function(d){ if(!d.parentId){ groups[d.id]=[]; order.push(d.id); } });   // 部（最上位）のみ見出し
+    groups['_none']=[];
+    list.forEach(function(m){ var did=memberDeptIds(m).deptId; var k=(did&&groups[did])?did:'_none'; groups[k].push(m); });
+    order.concat(['_none']).forEach(function(k){
+      var ms=groups[k]; if(!ms||!ms.length)return;
+      var nm=(k==='_none')?'未所属':deptName(k); var col=(k==='_none')?'#64748b':deptColor(k);
+      h+='<div class="dept-group"><div class="dept-h"><span class="dot" style="background:'+col+'"></span>'+esc(nm)+'<span class="cnt">'+ms.length+'人</span></div>';
+      ms.forEach(function(m){ h+=memberCardHTML(m, canReorder?k:undefined); });
+      h+='</div>';
+    });
+  }
   if(!list.length) h='<div class="empty">該当する社員がいません。'+(IS_ADMIN?'「＋ 新規社員」か「📥 取り込み」で登録してください。':'')+'</div>';
-  document.getElementById('members-list').innerHTML=h;
+  document.getElementById('members-list').innerHTML=toggle+h;
 }
-function memberCardHTML(m){
+// reorderScope: undefined=並び替えなし / null=一覧（全体）/ '部署id'or'_none'=部署内
+function memberCardHTML(m, reorderScope){
   var emp=empLabel(m.employmentType);
   var statusBadge = m.status==='left'?'<span class="badge b-off">退職</span>':(m.status==='leave'?'<span class="badge b-leave">休職</span>':'');
   var login = m.portalMemberId?'<span class="badge b-login">ログイン可</span>':'<span class="badge b-nologin">非ログイン</span>';
@@ -546,7 +596,8 @@ function memberCardHTML(m){
   var topB = m.topRole?'<span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span>':'';
   var dr=[]; if(m.mt)dr.push('MT可'); if(m.licenses&&m.licenses.length)dr.push(m.licenses.slice(0,3).join('/'));
   var secNm=memberDeptIds(m).sectionId?deptName(memberDeptIds(m).sectionId):''; var secB=secNm?'<span class="badge b-dept">🏢 '+esc(secNm)+'</span>':'';
-  return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+avatarHTML(m,38).replace('mav','mav')+
+  var ord=(reorderScope!==undefined)?reorderBtns(m.id,-1,reorderScope):'';
+  return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avatarHTML(m,38)+
     '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
     '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
 }
