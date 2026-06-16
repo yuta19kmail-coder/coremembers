@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.3.0">
+<meta name="app-version" content="0.3.1">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -174,7 +174,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.3.0</div>
+    <div class="ver">CoreMembers v0.3.1</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -189,7 +189,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.3.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.3.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -258,7 +258,7 @@
 </div>
 
 <!-- 社員 編集モーダル -->
-<div class="mbg" id="member-modal" onclick="if(event.target.id==='member-modal')closeMemberModal()">
+<div class="mbg" id="member-modal">
   <div class="mbox">
     <div class="mhead"><span class="mt" id="mm-title">社員</span><button class="x" onclick="closeMemberModal()">✕</button></div>
     <div class="mbody" id="mm-body"></div>
@@ -267,7 +267,7 @@
 </div>
 
 <!-- 部署 編集モーダル -->
-<div class="mbg" id="dept-modal" onclick="if(event.target.id==='dept-modal')closeDeptModal()">
+<div class="mbg" id="dept-modal">
   <div class="mbox" style="width:min(94vw,440px)">
     <div class="mhead"><span class="mt" id="dm-title">部署</span><button class="x" onclick="closeDeptModal()">✕</button></div>
     <div class="mbody" id="dm-body"></div>
@@ -276,7 +276,7 @@
 </div>
 
 <!-- 場所 編集モーダル -->
-<div class="mbg" id="loc-modal" onclick="if(event.target.id==='loc-modal')closeLocModal()">
+<div class="mbg" id="loc-modal">
   <div class="mbox" style="width:min(94vw,440px)">
     <div class="mhead"><span class="mt" id="lm-title">場所</span><button class="x" onclick="closeLocModal()">✕</button></div>
     <div class="mbody" id="lm-body"></div>
@@ -587,23 +587,46 @@ function deleteDeptCur(){ if(!IS_ADMIN||!DE||!DE.id)return; if(!confirm(DE.name+
 function mapsUrl(q){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q||''); }
 function openLocMap(){ var a=(document.getElementById('le-addr')||{}).value||(document.getElementById('le-name')||{}).value||''; if(!a){ toast('住所か場所名を入れてください'); return; } window.open(mapsUrl(a),'_blank','noopener'); }
 function locMapPreview(){ var f=document.getElementById('le-map-frame'); if(!f)return; var q=''; if(LE&&LE.lat!=null&&LE.lng!=null){ q=LE.lat+','+LE.lng; } else { q=((document.getElementById('le-addr')||{}).value||'').trim(); } if(q){ f.src='https://maps.google.com/maps?q='+encodeURIComponent(q)+'&z=16&output=embed'; f.style.display='block'; } else { f.style.display='none'; f.removeAttribute('src'); } }
-/* 住所→座標（OpenStreetMap/Nominatim・無料・キー不要） */
-async function geocodeLoc(){
-  var a=((document.getElementById('le-addr')||{}).value||'').trim()||((document.getElementById('le-name')||{}).value||'').trim();
+/* 貼り付け文字列から緯度経度を抽出（GoogleマップURL / 右クリックでコピーした座標 など） */
+function extractLatLng(s){
+  if(!s)return null; s=String(s);
+  var m;
+  m=s.match(/@(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/); if(m)return {lat:+m[1],lng:+m[2]};        // .../@35.79,139.94,17z
+  m=s.match(/!3d(-?\d{1,3}\.\d+)!4d(-?\d{1,3}\.\d+)/); if(m)return {lat:+m[1],lng:+m[2]};        // !3d..!4d..
+  m=s.match(/[?&](?:q|query|ll|destination|center)=(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/); if(m)return {lat:+m[1],lng:+m[2]};
+  m=s.match(/(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/); if(m)return {lat:+m[1],lng:+m[2]};  // 「35.957, 139.874」生コピー
+  return null;
+}
+function applyLatLng(p,via){
+  LE.lat=p.lat; LE.lng=p.lng;
+  var la=document.getElementById('le-lat'),ln=document.getElementById('le-lng');
+  if(la)la.value=p.lat.toFixed(6); if(ln)ln.value=p.lng.toFixed(6);
   var st=document.getElementById('le-geo-st');
-  if(!a){ if(st)st.textContent='⚠ 住所か場所名を入れてください'; return; }
+  if(st)st.textContent='✅ '+p.lat.toFixed(5)+', '+p.lng.toFixed(5)+(via?'（'+via+'）':'')+'　'+(LE.isBase?'基準':locGeoLabel({lat:p.lat,lng:p.lng}));
+  locMapPreview();
+}
+/* 住所/URL/座標 → 緯度経度（まず貼付から抽出、ダメならOpenStreetMapで住所検索） */
+async function geocodeLoc(){
+  var raw=((document.getElementById('le-addr')||{}).value||'').trim();
+  var nm=((document.getElementById('le-name')||{}).value||'').trim();
+  var st=document.getElementById('le-geo-st');
+  var p=extractLatLng(raw)||extractLatLng(nm);
+  if(p){ applyLatLng(p,'貼付座標'); return; }
+  var base=raw||nm;
+  if(!base){ if(st)st.textContent='⚠ 住所/場所名、またはGoogleマップのURL・座標を入れてください'; return; }
   if(st)st.textContent='取得中…';
-  try{
-    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ja&countrycodes=jp&q='+encodeURIComponent(a));
-    var j=await r.json();
-    if(j&&j.length){
-      LE.lat=parseFloat(j[0].lat); LE.lng=parseFloat(j[0].lon);
-      var la=document.getElementById('le-lat'),ln=document.getElementById('le-lng');
-      if(la)la.value=LE.lat.toFixed(6); if(ln)ln.value=LE.lng.toFixed(6);
-      if(st)st.textContent='✅ '+LE.lat.toFixed(5)+', '+LE.lng.toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel({lat:LE.lat,lng:LE.lng}));
-      locMapPreview();
-    } else { if(st)st.textContent='⚠ 見つかりませんでした。住所を具体的に、または緯度経度を直接入力してください'; }
-  }catch(e){ console.error(e); if(st)st.textContent='⚠ 取得失敗（通信）。緯度経度を直接入力できます'; }
+  var queries=[];
+  base.split(/\n/).forEach(function(line){ line=line.replace(/〒\s*\d{3}-?\d{4}/,'').replace(/\s*\d+\.\d+\s*\(\d+\)\s*$/,'').trim(); if(line)queries.push(line); });
+  var flat=base.replace(/\s+/g,' ').trim(); if(queries.indexOf(flat)<0)queries.push(flat);
+  if(nm&&queries.indexOf(nm)<0)queries.push(nm);
+  for(var i=0;i<queries.length;i++){
+    try{
+      var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ja&countrycodes=jp&q='+encodeURIComponent(queries[i]));
+      var j=await r.json();
+      if(j&&j.length){ applyLatLng({lat:parseFloat(j[0].lat),lng:parseFloat(j[0].lon)},'住所検索'); return; }
+    }catch(e){ console.error('[geo]',e); }
+  }
+  if(st)st.textContent='⚠ 自動取得できず。Googleマップで目的地を右クリック→先頭の数字（座標）をコピーしてこの欄に貼り、もう一度押すと確実です。緯度経度の直接入力も可。';
 }
 function locLatLngManual(){ var la=parseFloat((document.getElementById('le-lat')||{}).value); var ln=parseFloat((document.getElementById('le-lng')||{}).value); if(!isNaN(la)&&!isNaN(ln)){ LE.lat=la; LE.lng=ln; var st=document.getElementById('le-geo-st'); if(st)st.textContent='✅ '+la.toFixed(5)+', '+ln.toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel({lat:la,lng:ln})); locMapPreview(); } }
 /* 業務リスト（＋追加式・組織図のようにぶら下げ表示） */
@@ -630,7 +653,7 @@ function openLocModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');retur
   '<div class="fld"><label>場所名 *</label><input type="text" id="le-name" value="'+esc(LE.name)+'" placeholder="例：野田陸運支局"></div>'+
   '<div class="fld"><label>通称・呼び方（カンマ区切り）</label><input type="text" id="le-alias" value="'+esc((LE.aliases||[]).join(', '))+'" placeholder="例：のだりく, 野田の陸じ"><div style="font-size:11px;color:var(--text3);margin-top:4px">現場やAIとのやり取りで使う呼び方。複数OK（後でAIが照合します）。</div></div>'+
   '<div class="row2"><div class="fld"><label>カテゴリ</label><select id="le-cat">'+catOpts+'</select></div><div class="fld"><label>区分</label><div style="display:flex;gap:14px;padding-top:6px;flex-wrap:wrap"><label class="toggle"><input type="checkbox" id="le-frequent" '+(LE.frequent?'checked':'')+'> ⭐よく使う</label><label class="toggle"><input type="checkbox" id="le-base" '+(LE.isBase?'checked':'')+'> 🏠会社/基準</label></div></div></div>'+
-  '<div class="fld"><label>住所</label><input type="text" id="le-addr" value="'+esc(LE.address||'')+'" placeholder="住所 or 場所名" onchange="locMapPreview()"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><button class="btn-ghost" type="button" onclick="geocodeLoc()" style="font-size:12px;padding:5px 10px">📍 住所から座標を取得</button><a href="#" onclick="openLocMap();return false;" style="font-size:12px;color:var(--carflow)">🗺 別タブで開く</a></div><div id="le-geo-st" style="font-size:11px;color:var(--text3);margin-top:5px">'+(LE.lat!=null?'✅ '+Number(LE.lat).toFixed(5)+', '+Number(LE.lng).toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel(LE)):'座標未取得（方面の自動判定に使います）')+'</div><div class="row2" style="margin-top:6px"><div class="fld"><label>緯度</label><input type="text" id="le-lat" value="'+(LE.lat!=null?Number(LE.lat).toFixed(6):'')+'" placeholder="35.806" onchange="locLatLngManual()"></div><div class="fld"><label>経度</label><input type="text" id="le-lng" value="'+(LE.lng!=null?Number(LE.lng).toFixed(6):'')+'" placeholder="139.944" onchange="locLatLngManual()"></div></div><iframe id="le-map-frame" style="width:100%;height:200px;border:0;border-radius:8px;margin-top:8px;display:none" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>'+
+  '<div class="fld"><label>住所 / GoogleマップのURL・座標</label><input type="text" id="le-addr" value="'+esc(LE.address||'')+'" placeholder="住所・場所名 ／ マップのURL ／ 35.957, 139.874" onchange="locMapPreview()"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><button class="btn-ghost" type="button" onclick="geocodeLoc()" style="font-size:12px;padding:5px 10px">📍 座標を取得（住所/URL/座標）</button><a href="#" onclick="openLocMap();return false;" style="font-size:12px;color:var(--carflow)">🗺 別タブで開く</a></div><div style="font-size:10.5px;color:var(--text3);margin-top:4px">確実な方法：Googleマップで目的地を<b>右クリック→先頭の数字（緯度,経度）をクリックでコピー</b>→ここに貼って「座標を取得」。</div><div id="le-geo-st" style="font-size:11px;color:var(--text3);margin-top:5px">'+(LE.lat!=null?'✅ '+Number(LE.lat).toFixed(5)+', '+Number(LE.lng).toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel(LE)):'座標未取得（方面の自動判定に使います）')+'</div><div class="row2" style="margin-top:6px"><div class="fld"><label>緯度</label><input type="text" id="le-lat" value="'+(LE.lat!=null?Number(LE.lat).toFixed(6):'')+'" placeholder="35.806" onchange="locLatLngManual()"></div><div class="fld"><label>経度</label><input type="text" id="le-lng" value="'+(LE.lng!=null?Number(LE.lng).toFixed(6):'')+'" placeholder="139.944" onchange="locLatLngManual()"></div></div><iframe id="le-map-frame" style="width:100%;height:200px;border:0;border-radius:8px;margin-top:8px;display:none" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>'+
   '<div class="fld"><label>この場所で発生する業務</label><div id="le-task-list" class="task-list"></div><div style="display:flex;gap:6px;margin-top:6px"><input type="text" id="le-task-input" placeholder="例：印鑑証明 ／ 車検(普通)" style="flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addLocTask();}"><button class="btn-ghost" type="button" onclick="addLocTask()" style="white-space:nowrap">＋ 追加</button></div><div style="font-size:11px;color:var(--text3);margin-top:4px">1件ずつ追加。社員ごとに「この場所でどの業務までできるか」を✅する元になります。</div></div>'+
   '<div class="fld"><label>メモ</label><input type="text" id="le-memo" value="'+esc(LE.memo||'')+'"></div>'+
   '<div class="fld"><label class="toggle"><input type="checkbox" id="le-active" '+(LE.active!==false?'checked':'')+'> 有効</label></div>';
