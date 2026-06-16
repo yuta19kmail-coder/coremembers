@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.4.1">
+<meta name="app-version" content="0.5.0">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -96,6 +96,14 @@
   .b-off{background:rgba(239,68,68,.14);color:#fca5a5}
   .b-star{background:rgba(245,158,11,.16);color:#fcd34d;border:1px solid rgba(245,158,11,.4)}
   .b-base{background:rgba(56,211,154,.14);color:#37d39a;border:1px solid rgba(56,211,154,.4)}
+  .b-top{background:rgba(234,88,12,.16);color:#fdba74;border:1px solid rgba(234,88,12,.45)}
+  .execstrip{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-bottom:6px}
+  .execlabel{font-size:11px;font-weight:700;color:var(--text3);margin-bottom:8px}
+  .execrow{display:flex;gap:8px;flex-wrap:wrap}
+  .execcard{display:flex;align-items:center;gap:9px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:7px 12px 7px 8px;cursor:pointer;min-width:200px;flex:1 1 240px;max-width:340px}
+  .execcard:hover{border-color:var(--acc)}
+  .execcard .lt{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .execcard .ls{font-size:11px;color:var(--text3);margin-top:1px}
   .lwrap{margin-bottom:7px}
   .lwrap .lrow{margin-bottom:0}
   .ltask-children{margin:4px 0 0 18px;border-left:2px solid var(--border);padding-left:11px;display:flex;flex-direction:column;gap:3px}
@@ -178,7 +186,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.4.1</div>
+    <div class="ver">CoreMembers v0.5.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -193,7 +201,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.4.1</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.5.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -369,6 +377,9 @@ const SIZES=['軽','普通','1BOX','ハイエース','2t','特殊'];
 const DRIVE_CAPS=[['left','左ハンドル'],['big1','大型①(BIGセダン)'],['big2','大型②(ゲレンデ・ランクル)']];
 const REG_TASKS=['中古新規','名義変更','ナンバー変更','住所変更'];
 const DEPT_TYPES=[['division','部'],['section','課'],['team','班'],['site','拠点']];
+const TOP_ROLES=[['daihyo','代表'],['fukudaihyo','副代表'],['senmu','専務'],['jomu','常務'],['torishimari','取締役'],['komon','顧問']];
+function topRoleLabel(v){ var x=TOP_ROLES.find(function(e){return e[0]===v;}); return x?x[1]:''; }
+function topRoleRank(v){ for(var i=0;i<TOP_ROLES.length;i++)if(TOP_ROLES[i][0]===v)return i; return 99; }
 const DEFAULT_LOC_CATS=[['rikuun','陸運局'],['parts','部品商'],['partner','取引先'],['site','自社拠点'],['customer','顧客先'],['police','警察署'],['other','その他']];
 let LOC_CATS=DEFAULT_LOC_CATS.slice();   // 設定ページ（coreSettings/app.locCats）で上書き
 function empLabel(v){var x=EMP_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'');}
@@ -456,9 +467,10 @@ function memberCardHTML(m){
   var statusBadge = m.status==='left'?'<span class="badge b-off">退職</span>':(m.status==='leave'?'<span class="badge b-leave">休職</span>':'');
   var login = m.portalMemberId?'<span class="badge b-login">ログイン可</span>':'<span class="badge b-nologin">非ログイン</span>';
   var noplan = (m.showInSchedule===false)?'<span class="badge b-noplan">予定非表示</span>':'';
+  var topB = m.topRole?'<span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span>':'';
   var dr=[]; if(m.mt)dr.push('MT可'); if(m.licenses&&m.licenses.length)dr.push(m.licenses.slice(0,3).join('/'));
   return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+avatarHTML(m,38).replace('mav','mav')+
-    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+statusBadge+'</div>'+
+    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
     '<div class="mmeta">'+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
 }
 
@@ -501,6 +513,7 @@ function renderMemberForm(){
     '<div class="sec-h">組織</div>'+
     '<div class="row2"><div class="fld"><label>所属（主）</label><select id="me-dept"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div></div>'+
     '<div class="fld"><label>兼務（複数可）</label><div class="seg-pick">'+(subChips||'<span style="font-size:11px;color:var(--text3)">部署未登録</span>')+'</div></div>'+
+    '<div class="fld"><label>上位役割（部より上・任意）</label><select id="me-toprole"'+dis+'><option value="">（なし）</option>'+TOP_ROLES.map(function(r){return '<option value="'+r[0]+'"'+(ME.topRole===r[0]?' selected':'')+'>'+r[1]+'</option>';}).join('')+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">代表・役員など。設定すると組織図の最上部に役割として表示（現場の部署とは別。兼任OK）。</div></div>'+
     '<div class="sec-h">雇用</div>'+
     '<div class="row3"><div class="fld"><label>雇用形態</label><select id="me-emp"'+dis+'>'+empOpts+'</select></div><div class="fld"><label>在籍状況</label><select id="me-status"'+dis+'>'+stOpts+'</select></div><div class="fld"><label>週何日</label><input type="number" id="me-weekly" value="'+esc(ME.weeklyDays||'')+'" min="0" max="7"'+dis+'></div></div>'+
     '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
@@ -552,6 +565,7 @@ function saveMemberForm(){
   ME.ini=name.charAt(0);
   ME.primaryDeptId=document.getElementById('me-dept').value||'';
   ME.managerId=document.getElementById('me-mgr').value||'';
+  ME.topRole=document.getElementById('me-toprole').value||'';
   ME.employmentType=document.getElementById('me-emp').value||'fulltime';
   ME.status=document.getElementById('me-status').value||'active';
   ME.weeklyDays=document.getElementById('me-weekly').value||'';
@@ -589,14 +603,28 @@ function deptRowHTML(d,depth){
   var arrow=depth>0?'<span style="color:var(--text3)">└ </span>':'';
   return '<div class="lrow" style="margin-left:'+(depth*24)+'px"><span class="dot" style="background:'+((d.color)||'#64748b')+'"></span><div class="grow"><div class="lt">'+arrow+esc(d.name)+' <span style="font-size:11px;color:var(--text3)">'+deptTypeLabel(d.type)+'</span></div><div class="ls">'+cnt+'人'+(leader?'・責任者：'+esc(leader.name):'')+'</div></div>'+(IS_ADMIN?'<button class="iconbtn" onclick="openDeptModal(\''+escA(d.id)+'\')">✏️</button>':'')+'</div>';
 }
+function execStripHTML(){
+  var execs=MEMBERS.filter(function(m){return m.topRole;}).sort(function(a,b){ return topRoleRank(a.topRole)-topRoleRank(b.topRole)||String(a.name||'').localeCompare(String(b.name||''),'ja'); });
+  if(!execs.length)return '';
+  var cards=execs.map(function(m){
+    var dept=m.primaryDeptId?deptById(m.primaryDeptId):null;
+    var sub=(m.subDeptIds||[]).map(function(id){var d=deptById(id);return d?d.name:'';}).filter(Boolean);
+    var where=[]; if(dept)where.push(dept.name+(m.roleTitle?'／'+m.roleTitle:'')); else if(m.roleTitle)where.push(m.roleTitle); if(sub.length)where.push('兼務：'+sub.join('・'));
+    return '<div class="execcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+avatarHTML(m,40)
+      +'<div class="grow"><div class="lt">'+esc(m.name)+' <span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span></div>'
+      +'<div class="ls">'+(where.length?esc(where.join('・')):'（現場の所属なし）')+'</div></div></div>';
+  }).join('');
+  return '<div class="execstrip"><div class="execlabel">上位役割</div><div class="execrow">'+cards+'</div></div>';
+}
 function renderOrg(){
-  if(!DEPTS.length){ document.getElementById('org-list').innerHTML='<div class="empty">部署が未登録です。'+(IS_ADMIN?'「＋ 部署を追加」から登録してください（例：整備部 を作り、その下に 1課/2課 を作って上位部署に整備部を指定）。':'')+'</div>'; return; }
+  var strip=execStripHTML();
+  if(!DEPTS.length){ document.getElementById('org-list').innerHTML=strip+'<div class="empty">部署が未登録です。'+(IS_ADMIN?'「＋ 部署を追加」から登録してください（例：整備部 を作り、その下に 1課/2課 を作って上位部署に整備部を指定）。':'')+'</div>'; return; }
   var valid={}; DEPTS.forEach(function(d){valid[d.id]=true;});
   var byParent={}; DEPTS.forEach(function(d){ var p=(d.parentId&&valid[d.parentId])?d.parentId:'_root'; (byParent[p]=byParent[p]||[]).push(d); });
   var h='';
   function walk(d,depth){ h+=deptRowHTML(d,depth); (byParent[d.id]||[]).forEach(function(c){ walk(c,depth+1); }); }
   (byParent['_root']||[]).forEach(function(d){ walk(d,0); });
-  document.getElementById('org-list').innerHTML=h;
+  document.getElementById('org-list').innerHTML=strip+(strip?'<div class="sec-h" style="margin-top:14px">部署</div>':'')+h;
 }
 let DE=null;
 function openDeptModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=deptById(id);DE=s?JSON.parse(JSON.stringify(s)):null;if(!DE)return;}else{DE={id:null,name:'',type:'section',parentId:'',leaderMemberId:'',color:'#1db97a',order:DEPTS.length};} document.getElementById('dm-title').textContent=id?'部署を編集':'部署を追加'; document.getElementById('dm-del').style.display=id?'inline-block':'none'; var typeOpts=DEPT_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(DE.type===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); var parentOpts='<option value="">（最上位）</option>'+DEPTS.filter(function(x){return x.id!==DE.id;}).map(function(x){return '<option value="'+x.id+'"'+(DE.parentId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); var leadOpts='<option value="">（なし）</option>'+MEMBERS.map(function(x){return '<option value="'+x.id+'"'+(DE.leaderMemberId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); document.getElementById('dm-body').innerHTML='<div class="fld"><label>部署名 *</label><input type="text" id="de-name" value="'+esc(DE.name)+'" placeholder="例：1課 / 整備部 / 受付"></div><div class="row2"><div class="fld"><label>種別</label><select id="de-type">'+typeOpts+'</select></div><div class="fld"><label>色</label><input type="text" id="de-color" value="'+esc(DE.color||'#1db97a')+'"></div></div><div class="row2"><div class="fld"><label>上位部署</label><select id="de-parent">'+parentOpts+'</select></div><div class="fld"><label>責任者</label><select id="de-leader">'+leadOpts+'</select></div></div>'; document.getElementById('dept-modal').classList.add('show'); }
