@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.1.0">
+<meta name="app-version" content="0.1.1">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -48,6 +48,7 @@
   .av{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#ea580c,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;overflow:hidden;flex:none}
   .av img{width:100%;height:100%;object-fit:cover}
   .uname{font-size:13px;color:var(--text2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .role-chip{font-size:10px;font-weight:700;color:var(--acc2);background:rgba(234,88,12,.14);border:1px solid rgba(234,88,12,.35);border-radius:8px;padding:2px 7px;white-space:nowrap}
   .help-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:13px;font-weight:700;cursor:pointer}
   .help-btn:hover{background:var(--acc);color:#fff;border-color:var(--acc)}
   .btn-sm{font-size:11px;color:var(--text3);background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer}
@@ -155,7 +156,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.1.0</div>
+    <div class="ver">CoreMembers v0.1.1</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -170,13 +171,14 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.1.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.1.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
     <div class="topbar-user">
       <span class="av" id="u-av"></span>
       <span class="uname" id="me-name"></span>
+      <span class="role-chip" id="cm-role" title="あなたのCoreMembers権限"></span>
       <span class="sync-indicator sync-online" id="sync-ind" title="リアルタイム同期中"><span class="sync-dot"></span><span class="sync-text">同期</span></span>
       <button class="help-btn" onclick="showView('about')" title="ヘルプ">？</button>
       <button class="btn-sm" onclick="doLogout()">ログアウト</button>
@@ -283,7 +285,7 @@ function toggleTheme(){var r=document.documentElement,c=r.getAttribute('data-the
 function toggleSidebar(){document.body.classList.toggle('sb-collapsed');}
 
 /* ---------- 認証＋入室 ---------- */
-let IS_ADMIN=false;
+let IS_ADMIN=false; let CM_ROLE='一般';
 function loginWithGoogle(){ if(!window.fb||!window.fb.auth){document.getElementById('login-msg').textContent='接続準備中です。少し待って再度お試しください。';return;} var p=new firebase.auth.GoogleAuthProvider(); window.fb.auth.signInWithPopup(p).catch(function(err){ console.error('[CM login]',err); document.getElementById('login-msg').textContent=(err&&err.code==='auth/unauthorized-domain')?'このURLがFirebaseに未登録です（承認済みドメイン設定が必要）。':'ログインに失敗しました。'; }); }
 function doLogout(){ if(window.fb&&window.fb.auth)window.fb.auth.signOut(); else location.reload(); }
 function showLoginScreen(){ document.getElementById('cm-login').style.display='flex'; document.getElementById('cm-denied').style.display='none'; document.getElementById('app').style.display='none'; }
@@ -307,8 +309,11 @@ async function checkAccess(user){
 }
 async function enterApp(member,user){
   document.getElementById('cm-login').style.display='none'; document.getElementById('cm-denied').style.display='none'; document.getElementById('app').style.display='grid';
-  IS_ADMIN=!!(member&&(member.admin===true||member.master===true));
+  var _cm=(member&&member.coremembers)||{};
+  CM_ROLE=(member&&(member.master||member.admin))?'オーナー':(_cm.on&&_cm.role?_cm.role:'一般');
+  IS_ADMIN=(CM_ROLE==='オーナー'||CM_ROLE==='管理者');   // マスターデータ編集可
   document.getElementById('me-name').textContent=(member&&member.name)||user.displayName||user.email||'ユーザー';
+  var rc=document.getElementById('cm-role'); if(rc)rc.textContent=CM_ROLE;
   var av=document.getElementById('u-av'); var ph=member&&(member.photo||member.photoURL); av.innerHTML=ph?('<img src="'+ph+'" alt="">'):esc((member&&member.ini)||String((member&&member.name)||'？').charAt(0));
   if(!IS_ADMIN){ ['btn-new','btn-seed'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display='none';}); }
   try{ await window.fb.db.collection('companies').doc(COMPANY_ID).collection('userPrefs').doc(user.uid).set({memberId:member.id,memberEmail:(member.email||user.email||'')},{merge:true}); }catch(e){}
