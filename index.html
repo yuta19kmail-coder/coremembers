@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.6.0">
+<meta name="app-version" content="0.6.1">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -225,7 +225,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.6.0</div>
+    <div class="ver">CoreMembers v0.6.1</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -240,7 +240,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.6.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.6.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -683,12 +683,28 @@ function setSkillTab(t){ skillTab=t; renderSkills(); }
 function skillSrc(m){ return (SKILL_EDIT && EBUF[m.id]) ? EBUF[m.id] : m; }
 function skillEnterEdit(){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} EBUF={}; EDIRTY={}; skillMembersList().forEach(function(m){ EBUF[m.id]=JSON.parse(JSON.stringify({driveCaps:m.driveCaps||[],regTasks:m.regTasks||[],mt:!!m.mt,canLeft:!!m.canLeft,canLeftMt:!!m.canLeftMt,canLowCar:!!m.canLowCar,nearOnly:!!m.nearOnly,drivingConfidence:m.drivingConfidence||'',drivingNotes:m.drivingNotes||'',locSkills:m.locSkills||{}})); }); SKILL_EDIT=true; renderSkills(); }
 function skillCancelEdit(){ SKILL_EDIT=false; EBUF={}; EDIRTY={}; renderSkills(); toast('編集をやめました'); }
-async function skillSaveEdit(){ if(!IS_ADMIN)return; var ids=Object.keys(EDIRTY); if(!ids.length){ SKILL_EDIT=false; EBUF={}; renderSkills(); toast('変更はありませんでした'); return; }
-  toast('保存中…'); var ok=0;
-  for(var i=0;i<ids.length;i++){ var id=ids[i]; var b=EBUF[id]; if(!b)continue;
-    var goable=Object.keys(b.locSkills||{}).filter(function(k){return b.locSkills[k].status==='ok';});
-    var patch={driveCaps:b.driveCaps,regTasks:b.regTasks,mt:b.mt,canLeft:b.canLeft,canLeftMt:b.canLeftMt,canLowCar:b.canLowCar,nearOnly:b.nearOnly,drivingConfidence:b.drivingConfidence,drivingNotes:b.drivingNotes,locSkills:b.locSkills,goableLocationIds:goable};
-    try{ await saveMemberField(id,patch); var mm=memberById(id); if(mm)Object.assign(mm,patch); ok++; }catch(e){ console.error(e); }
+function _skillSnap(o){ o=o||{}; return JSON.stringify({driveCaps:o.driveCaps||[],regTasks:o.regTasks||[],mt:!!o.mt,canLeft:!!o.canLeft,canLeftMt:!!o.canLeftMt,canLowCar:!!o.canLowCar,nearOnly:!!o.nearOnly,drivingConfidence:o.drivingConfidence||'',drivingNotes:o.drivingNotes||'',locSkills:o.locSkills||{}}); }
+async function skillSaveEdit(){
+  if(!IS_ADMIN){ toast('編集は管理者のみ'); return; }
+  // EDIRTY頼みにせず、作業コピー(EBUF)と本体(MEMBERS)を見比べて「変わった人」を確定（取りこぼし防止）
+  var ids=Object.keys(EBUF).filter(function(id){ var m=memberById(id); return m && _skillSnap(EBUF[id])!==_skillSnap(m); });
+  if(!ids.length){ SKILL_EDIT=false; EBUF={}; EDIRTY={}; renderSkills(); toast('変更はありませんでした'); return; }
+  var btn=document.querySelector('.sk-bar.editing .btn-save'); if(btn){ btn.disabled=true; btn.textContent='保存中…'; }
+  toast('保存中…'); var ok=0, fails=[];
+  for(var i=0;i<ids.length;i++){
+    var id=ids[i]; var b=EBUF[id]; if(!b)continue;
+    var goable=Object.keys(b.locSkills||{}).filter(function(k){return b.locSkills[k]&&b.locSkills[k].status==='ok';});
+    var patch={driveCaps:b.driveCaps||[],regTasks:b.regTasks||[],mt:!!b.mt,canLeft:!!b.canLeft,canLeftMt:!!b.canLeftMt,canLowCar:!!b.canLowCar,nearOnly:!!b.nearOnly,drivingConfidence:b.drivingConfidence||'',drivingNotes:b.drivingNotes||'',locSkills:b.locSkills||{},goableLocationIds:goable};
+    try{ await saveMemberField(id,patch); var mm=memberById(id); if(mm)Object.assign(mm,patch); ok++; }
+    catch(e){ console.error('[skill save]',id,e); var nm=(memberById(id)||{}).name||id; fails.push(nm+'：'+(e&&e.message||e)); }
+  }
+  if(fails.length){
+    // 失敗があれば編集モードは維持（やり直せるように）＋原因を表示
+    if(btn){ btn.disabled=false; btn.textContent='💾 保存して終了'; }
+    renderSkills();
+    alert('保存に失敗しました（'+fails.length+'件）。編集はそのまま残しています。\n\n'+fails.slice(0,5).join('\n')+'\n\nこの内容をそのまま伝えてください。');
+    toast('⚠ 保存に失敗（'+fails.length+'件）');
+    return;
   }
   SKILL_EDIT=false; EBUF={}; EDIRTY={}; renderSkills(); toast(ok+'人分を保存しました');
 }
