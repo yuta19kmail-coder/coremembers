@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.7.2">
+<meta name="app-version" content="0.7.3">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.7.2</div>
+    <div class="ver">CoreMembers v0.7.3</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.2</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.3</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -765,7 +765,8 @@ async function skillSaveEdit(){
   for(var i=0;i<ids.length;i++){
     var id=ids[i]; var b=EBUF[id]; if(!b)continue;
     var goable=Object.keys(b.locSkills||{}).filter(function(k){return b.locSkills[k]&&b.locSkills[k].status==='ok';});
-    var patch={driveCaps:b.driveCaps||[],regTasks:b.regTasks||[],mt:!!b.mt,canLeft:!!b.canLeft,canLeftMt:!!b.canLeftMt,canLowCar:!!b.canLowCar,nearOnly:!!b.nearOnly,drivingConfidence:b.drivingConfidence||'',drivingNotes:b.drivingNotes||'',locSkills:b.locSkills||{},goableLocationIds:goable};
+    var _vd=DRIVE_SKILLS.map(function(d){return d[0];}); var _dc=(b.driveCaps||[]).filter(function(k){return _vd.indexOf(k)>=0;});   // 廃止キー(big1等)を掃除
+    var patch={driveCaps:_dc,regTasks:b.regTasks||[],mt:!!b.mt,canLeft:!!b.canLeft,canLeftMt:!!b.canLeftMt,canLowCar:!!b.canLowCar,nearOnly:!!b.nearOnly,drivingConfidence:b.drivingConfidence||'',drivingNotes:b.drivingNotes||'',locSkills:b.locSkills||{},goableLocationIds:goable};
     try{ await saveMemberField(id,patch); var mm=memberById(id); if(mm)Object.assign(mm,patch); ok++; }
     catch(e){ console.error('[skill save]',id,e); var nm=(memberById(id)||{}).name||id; fails.push(nm+'：'+(e&&e.message||e)); }
   }
@@ -811,13 +812,10 @@ function skillMatrixSimple(field, items, boolCols, extraCols){
   return '<table class="skmx"><thead><tr><th class="sk-name sk-corner">社員</th>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
 }
 function _edAttr(handler){ return (IS_ADMIN&&SKILL_EDIT)?(' onclick="'+handler+'"'):''; }
-// 乗れる車タブの右に付ける運転の付帯項目（得意度・近場のみ・メモ）
+// 乗れる車タブの右に付ける付帯項目（近場のみ のみ。得意度・運転メモは撤去）
 function driveExtraCols(){
-  var dis=(IS_ADMIN&&SKILL_EDIT)?'':' disabled';
   return [
-    { label:'得意度', cell:function(m,src){ var v=String(src.drivingConfidence||''); var o='<option value="">—</option>'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(v===String(n)?' selected':'')+'>'+n+'</option>';}).join(''); return '<select class="skmini"'+dis+' onchange="skillSetField(\''+escA(m.id)+'\',\'drivingConfidence\',this.value)">'+o+'</select>'; } },
-    { label:'近場のみ', cell:function(m,src){ return skCellBool(m.id,'nearOnly',!!src.nearOnly); } },
-    { label:'運転メモ', cell:function(m,src){ return '<input type="text" class="skmemo" value="'+esc(src.drivingNotes||'')+'" placeholder="例：高速苦手"'+dis+' onchange="skillSetField(\''+escA(m.id)+'\',\'drivingNotes\',this.value)">'; } }
+    { label:'近場のみ', cell:function(m,src){ return skCellBool(m.id,'nearOnly',!!src.nearOnly); } }
   ];
 }
 function skCellArr(id,field,key,on){ return '<span class="skcell'+(on?' on':'')+(IS_ADMIN&&SKILL_EDIT?' editable':'')+'"'+_edAttr('skillToggleArr(\''+escA(id)+'\',\''+escA(field)+'\',\''+escA(key)+'\',this)')+'>'+(on?'✓':'')+'</span>'; }
@@ -845,7 +843,7 @@ function skillLocTask(id,locId,task,el){ if(!SKILL_EDIT||!IS_ADMIN)return; var s
 // 社員詳細用：能力サマリー（読み取り専用・展開で表示）
 function memberSkillSummaryHTML(m){
   function chips(arr){ return arr.length?arr.map(function(x){return '<span class="sumchip">'+esc(x)+'</span>';}).join(''):'<span class="summute">—</span>'; }
-  var drive=(m.driveCaps||[]).map(driveSkillLabel).filter(Boolean);
+  var _vd=DRIVE_SKILLS.map(function(d){return d[0];}); var drive=(m.driveCaps||[]).filter(function(k){return _vd.indexOf(k)>=0;}).map(driveSkillLabel).filter(Boolean);   // 廃止キーは表示しない
   var spec=SPECIAL_DRIVE.filter(function(s){return !!m[s[0]];}).map(function(s){return s[1];});
   var reg=(m.regTasks||[]).slice();
   var locs=Object.keys(m.locSkills||{}).map(function(lid){ var s=m.locSkills[lid]||{}; var nm=locName(lid); if(!nm)return ''; var mark=s.status==='ok'?'✅':(s.status==='never'?'🔶':''); var tk=(s.tasks||[]).length?'（'+s.tasks.join('・')+'）':''; return mark+nm+tk; }).filter(Boolean);
