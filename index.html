@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.2.0">
+<meta name="app-version" content="0.3.0">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -94,6 +94,15 @@
   .badge{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px}
   .b-emp{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
   .b-off{background:rgba(239,68,68,.14);color:#fca5a5}
+  .b-star{background:rgba(245,158,11,.16);color:#fcd34d;border:1px solid rgba(245,158,11,.4)}
+  .b-base{background:rgba(56,211,154,.14);color:#37d39a;border:1px solid rgba(56,211,154,.4)}
+  .lwrap{margin-bottom:7px}
+  .lwrap .lrow{margin-bottom:0}
+  .ltask-children{margin:4px 0 0 18px;border-left:2px solid var(--border);padding-left:11px;display:flex;flex-direction:column;gap:3px}
+  .ltask-child{font-size:12px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:3px 9px}
+  .task-list{display:flex;flex-direction:column;gap:5px}
+  .taskrow{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 10px}
+  .taskrow .grow{flex:1;min-width:0}
   .b-leave{background:rgba(245,158,11,.16);color:#fcd34d}
   .b-login{background:rgba(55,138,221,.16);color:#7db8ee}
   .b-nologin{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
@@ -165,7 +174,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.2.0</div>
+    <div class="ver">CoreMembers v0.3.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -180,7 +189,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.2.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.3.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -354,6 +363,15 @@ function empLabel(v){var x=EMP_TYPES.find(function(e){return e[0]===v;});return 
 function statusLabel(v){var x=STATUSES.find(function(e){return e[0]===v;});return x?x[1]:(v||'在籍');}
 function deptTypeLabel(v){var x=DEPT_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'課');}
 function locCatLabel(v){var x=LOC_CATS.find(function(e){return e[0]===v;});return x?x[1]:(v||'その他');}
+/* ---- 基準地点（会社）からの方角・距離 自動算出 ---- */
+const BASE_FALLBACK={lat:35.8007,lng:139.9436,name:'松戸市五香(暫定)'};   // 基準未設定時の暫定座標
+function baseLoc(){ for(var i=0;i<LOCS.length;i++){ var l=LOCS[i]; if(l.isBase&&l.lat!=null&&l.lng!=null)return l; } return null; }
+function basePoint(){ var b=baseLoc(); return b?{lat:b.lat,lng:b.lng,name:b.name}:BASE_FALLBACK; }
+function _toRad(d){ return d*Math.PI/180; }
+function geoDistKm(a,b){ var R=6371,dLa=_toRad(b.lat-a.lat),dLo=_toRad(b.lng-a.lng),la1=_toRad(a.lat),la2=_toRad(b.lat); var x=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(la1)*Math.cos(la2)*Math.sin(dLo/2)*Math.sin(dLo/2); return 2*R*Math.asin(Math.min(1,Math.sqrt(x))); }
+function geoBearing(a,b){ var y=Math.sin(_toRad(b.lng-a.lng))*Math.cos(_toRad(b.lat)); var x=Math.cos(_toRad(a.lat))*Math.sin(_toRad(b.lat))-Math.sin(_toRad(a.lat))*Math.cos(_toRad(b.lat))*Math.cos(_toRad(b.lng-a.lng)); return (Math.atan2(y,x)*180/Math.PI+360)%360; }
+function compass8(br){ return ['北','北東','東','南東','南','南西','西','北西'][Math.round(br/45)%8]; }
+function locGeoLabel(l){ if(l.isBase)return '🏠 基準（会社）'; if(l.lat==null||l.lng==null)return ''; var bp=basePoint(),p={lat:l.lat,lng:l.lng},d=geoDistKm(bp,p),dir=compass8(geoBearing(bp,p)); return '会社から '+dir+'へ 約'+(d<10?d.toFixed(1):Math.round(d))+'km'; }
 
 /* ---------- データ層 ---------- */
 let MEMBERS=[], DEPTS=[], LOCS=[], PORTAL=[];
@@ -568,28 +586,69 @@ function deleteDeptCur(){ if(!IS_ADMIN||!DE||!DE.id)return; if(!confirm(DE.name+
 /* ---------- 場所マスター ---------- */
 function mapsUrl(q){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q||''); }
 function openLocMap(){ var a=(document.getElementById('le-addr')||{}).value||(document.getElementById('le-name')||{}).value||''; if(!a){ toast('住所か場所名を入れてください'); return; } window.open(mapsUrl(a),'_blank','noopener'); }
-function locMapPreview(){ var a=(document.getElementById('le-addr')||{}).value||''; var f=document.getElementById('le-map-frame'); if(!f)return; if(a.trim()){ f.src='https://maps.google.com/maps?q='+encodeURIComponent(a)+'&z=16&output=embed'; f.style.display='block'; } else { f.style.display='none'; f.removeAttribute('src'); } }
+function locMapPreview(){ var f=document.getElementById('le-map-frame'); if(!f)return; var q=''; if(LE&&LE.lat!=null&&LE.lng!=null){ q=LE.lat+','+LE.lng; } else { q=((document.getElementById('le-addr')||{}).value||'').trim(); } if(q){ f.src='https://maps.google.com/maps?q='+encodeURIComponent(q)+'&z=16&output=embed'; f.style.display='block'; } else { f.style.display='none'; f.removeAttribute('src'); } }
+/* 住所→座標（OpenStreetMap/Nominatim・無料・キー不要） */
+async function geocodeLoc(){
+  var a=((document.getElementById('le-addr')||{}).value||'').trim()||((document.getElementById('le-name')||{}).value||'').trim();
+  var st=document.getElementById('le-geo-st');
+  if(!a){ if(st)st.textContent='⚠ 住所か場所名を入れてください'; return; }
+  if(st)st.textContent='取得中…';
+  try{
+    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ja&countrycodes=jp&q='+encodeURIComponent(a));
+    var j=await r.json();
+    if(j&&j.length){
+      LE.lat=parseFloat(j[0].lat); LE.lng=parseFloat(j[0].lon);
+      var la=document.getElementById('le-lat'),ln=document.getElementById('le-lng');
+      if(la)la.value=LE.lat.toFixed(6); if(ln)ln.value=LE.lng.toFixed(6);
+      if(st)st.textContent='✅ '+LE.lat.toFixed(5)+', '+LE.lng.toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel({lat:LE.lat,lng:LE.lng}));
+      locMapPreview();
+    } else { if(st)st.textContent='⚠ 見つかりませんでした。住所を具体的に、または緯度経度を直接入力してください'; }
+  }catch(e){ console.error(e); if(st)st.textContent='⚠ 取得失敗（通信）。緯度経度を直接入力できます'; }
+}
+function locLatLngManual(){ var la=parseFloat((document.getElementById('le-lat')||{}).value); var ln=parseFloat((document.getElementById('le-lng')||{}).value); if(!isNaN(la)&&!isNaN(ln)){ LE.lat=la; LE.lng=ln; var st=document.getElementById('le-geo-st'); if(st)st.textContent='✅ '+la.toFixed(5)+', '+ln.toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel({lat:la,lng:ln})); locMapPreview(); } }
+/* 業務リスト（＋追加式・組織図のようにぶら下げ表示） */
+function renderLocTaskList(){ var c=document.getElementById('le-task-list'); if(!c)return; var t=LE.tasks||[]; c.innerHTML=t.length?t.map(function(x,i){return '<div class="taskrow">🔧 <span class="grow">'+esc(x)+'</span><button class="iconbtn" title="削除" onclick="delLocTask('+i+')">×</button></div>';}).join(''):'<div style="font-size:11px;color:var(--text3);padding:4px 2px">まだ業務がありません。下の欄から追加。</div>'; }
+function addLocTask(){ var el=document.getElementById('le-task-input'); var v=(el.value||'').trim(); if(!v)return; if(!LE.tasks)LE.tasks=[]; if(LE.tasks.indexOf(v)<0)LE.tasks.push(v); el.value=''; el.focus(); renderLocTaskList(); }
+function delLocTask(i){ if(!LE.tasks)return; LE.tasks.splice(i,1); renderLocTaskList(); }
 function renderLocations(){
   var h='';
   if(!LOCS.length){ h='<div class="empty">場所が未登録です。'+(IS_ADMIN?'「＋ 場所を追加」から（例：陸運局A(柏)・◯◯部品商・本社）。':'')+'</div>'; }
-  LOCS.forEach(function(l){
+  var list=LOCS.slice().sort(function(a,b){ return (b.frequent?1:0)-(a.frequent?1:0)||(a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja'); });
+  list.forEach(function(l){
     var mapBtn=(l.address||l.name)?'<a class="iconbtn" href="'+mapsUrl(l.address||l.name)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Googleマップで開く">🗺</a>':'';
-    h+='<div class="lrow"><div class="grow"><div class="lt">'+esc(l.name)+' <span class="badge b-emp">'+locCatLabel(l.category)+'</span>'+(l.active===false?'<span class="badge b-off">無効</span>':'')+'</div><div class="ls">'+(l.aliases&&l.aliases.length?'通称「'+esc(l.aliases.join('・'))+'」 ':'')+(l.area?'方面：'+esc(l.area):'')+(l.address?(l.area?'・':'')+esc(l.address):'')+(l.memo?'・'+esc(l.memo):'')+(l.tasks&&l.tasks.length?'<div style="margin-top:2px">業務：'+esc(l.tasks.join('・'))+'</div>':'')+'</div></div>'+mapBtn+(IS_ADMIN?'<button class="iconbtn" onclick="openLocModal(\''+escA(l.id)+'\')">✏️</button>':'')+'</div>';
+    var geo=locGeoLabel(l);
+    var meta=(l.aliases&&l.aliases.length?'通称「'+esc(l.aliases.join('・'))+'」 ':'')+(geo?'<span style="color:var(--carflow)">'+esc(geo)+'</span> ':'')+(l.address?esc(l.address):'')+(l.memo?'・'+esc(l.memo):'');
+    var star=l.frequent?'<span class="badge b-star">⭐よく使う</span>':'';
+    var base=l.isBase?'<span class="badge b-base">🏠基準</span>':'';
+    var tasksH=(l.tasks&&l.tasks.length)?'<div class="ltask-children">'+l.tasks.map(function(t){return '<div class="ltask-child">🔧 '+esc(t)+'</div>';}).join('')+'</div>':'';
+    h+='<div class="lwrap"><div class="lrow"><div class="grow"><div class="lt">'+esc(l.name)+' <span class="badge b-emp">'+locCatLabel(l.category)+'</span>'+star+base+(l.active===false?'<span class="badge b-off">無効</span>':'')+'</div><div class="ls">'+meta+'</div></div>'+mapBtn+(IS_ADMIN?'<button class="iconbtn" onclick="openLocModal(\''+escA(l.id)+'\')">✏️</button>':'')+'</div>'+tasksH+'</div>';
   });
   document.getElementById('loc-list').innerHTML=h;
 }
 let LE=null;
-function openLocModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=locById(id);LE=s?JSON.parse(JSON.stringify(s)):null;if(!LE)return;}else{LE={id:null,name:'',category:'rikuun',area:'',address:'',memo:'',order:LOCS.length,active:true};} document.getElementById('lm-title').textContent=id?'場所を編集':'場所を追加'; document.getElementById('lm-del').style.display=id?'inline-block':'none'; var catOpts=LOC_CATS.map(function(e){return '<option value="'+e[0]+'"'+(LE.category===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); document.getElementById('lm-body').innerHTML=
+function openLocModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=locById(id);LE=s?JSON.parse(JSON.stringify(s)):null;if(!LE)return;}else{LE={id:null,name:'',category:'rikuun',address:'',memo:'',order:LOCS.length,active:true,frequent:false,isBase:false,lat:null,lng:null,tasks:[]};} if(!Array.isArray(LE.tasks))LE.tasks=[]; document.getElementById('lm-title').textContent=id?'場所を編集':'場所を追加'; document.getElementById('lm-del').style.display=id?'inline-block':'none'; var catOpts=LOC_CATS.map(function(e){return '<option value="'+e[0]+'"'+(LE.category===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); document.getElementById('lm-body').innerHTML=
   '<div class="fld"><label>場所名 *</label><input type="text" id="le-name" value="'+esc(LE.name)+'" placeholder="例：野田陸運支局"></div>'+
   '<div class="fld"><label>通称・呼び方（カンマ区切り）</label><input type="text" id="le-alias" value="'+esc((LE.aliases||[]).join(', '))+'" placeholder="例：のだりく, 野田の陸じ"><div style="font-size:11px;color:var(--text3);margin-top:4px">現場やAIとのやり取りで使う呼び方。複数OK（後でAIが照合します）。</div></div>'+
-  '<div class="row2"><div class="fld"><label>カテゴリ</label><select id="le-cat">'+catOpts+'</select></div><div class="fld"><label>方面（任意・配車まとめ用）</label><input type="text" id="le-area" value="'+esc(LE.area||'')+'" placeholder="例：柏方面"></div></div>'+
-  '<div class="fld"><label>住所（入力後フォーカスを外すと下に地図が出ます）</label><input type="text" id="le-addr" value="'+esc(LE.address||'')+'" placeholder="住所 or 場所名" onchange="locMapPreview()"><div style="margin-top:6px"><a href="#" onclick="openLocMap();return false;" style="font-size:12px;color:var(--carflow)">🗺 Googleマップを別タブで開く</a></div><iframe id="le-map-frame" style="width:100%;height:200px;border:0;border-radius:8px;margin-top:8px;display:none" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>'+
-  '<div class="fld"><label>この場所で発生する業務（カンマ区切り）</label><input type="text" id="le-tasks" value="'+esc((LE.tasks||[]).join(', '))+'" placeholder="例：印鑑証明, 住所証明, 仮ナンバー ／ 車検(普通), 車検(軽)"><div style="font-size:11px;color:var(--text3);margin-top:4px">社員ごとに「この場所でどの業務までできるか」をチェックする元になります（配車・担当割りの素材）。</div></div>'+
+  '<div class="row2"><div class="fld"><label>カテゴリ</label><select id="le-cat">'+catOpts+'</select></div><div class="fld"><label>区分</label><div style="display:flex;gap:14px;padding-top:6px;flex-wrap:wrap"><label class="toggle"><input type="checkbox" id="le-frequent" '+(LE.frequent?'checked':'')+'> ⭐よく使う</label><label class="toggle"><input type="checkbox" id="le-base" '+(LE.isBase?'checked':'')+'> 🏠会社/基準</label></div></div></div>'+
+  '<div class="fld"><label>住所</label><input type="text" id="le-addr" value="'+esc(LE.address||'')+'" placeholder="住所 or 場所名" onchange="locMapPreview()"><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;align-items:center"><button class="btn-ghost" type="button" onclick="geocodeLoc()" style="font-size:12px;padding:5px 10px">📍 住所から座標を取得</button><a href="#" onclick="openLocMap();return false;" style="font-size:12px;color:var(--carflow)">🗺 別タブで開く</a></div><div id="le-geo-st" style="font-size:11px;color:var(--text3);margin-top:5px">'+(LE.lat!=null?'✅ '+Number(LE.lat).toFixed(5)+', '+Number(LE.lng).toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel(LE)):'座標未取得（方面の自動判定に使います）')+'</div><div class="row2" style="margin-top:6px"><div class="fld"><label>緯度</label><input type="text" id="le-lat" value="'+(LE.lat!=null?Number(LE.lat).toFixed(6):'')+'" placeholder="35.806" onchange="locLatLngManual()"></div><div class="fld"><label>経度</label><input type="text" id="le-lng" value="'+(LE.lng!=null?Number(LE.lng).toFixed(6):'')+'" placeholder="139.944" onchange="locLatLngManual()"></div></div><iframe id="le-map-frame" style="width:100%;height:200px;border:0;border-radius:8px;margin-top:8px;display:none" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>'+
+  '<div class="fld"><label>この場所で発生する業務</label><div id="le-task-list" class="task-list"></div><div style="display:flex;gap:6px;margin-top:6px"><input type="text" id="le-task-input" placeholder="例：印鑑証明 ／ 車検(普通)" style="flex:1" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addLocTask();}"><button class="btn-ghost" type="button" onclick="addLocTask()" style="white-space:nowrap">＋ 追加</button></div><div style="font-size:11px;color:var(--text3);margin-top:4px">1件ずつ追加。社員ごとに「この場所でどの業務までできるか」を✅する元になります。</div></div>'+
   '<div class="fld"><label>メモ</label><input type="text" id="le-memo" value="'+esc(LE.memo||'')+'"></div>'+
   '<div class="fld"><label class="toggle"><input type="checkbox" id="le-active" '+(LE.active!==false?'checked':'')+'> 有効</label></div>';
-  document.getElementById('loc-modal').classList.add('show'); locMapPreview(); }
+  document.getElementById('loc-modal').classList.add('show'); renderLocTaskList(); locMapPreview(); }
 function closeLocModal(){ document.getElementById('loc-modal').classList.remove('show'); }
-function saveLocForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('le-name').value||'').trim(); if(!name){alert('場所名を入力してください。');return;} LE.name=name; LE.aliases=_arr('le-alias'); LE.tasks=_arr('le-tasks'); LE.category=document.getElementById('le-cat').value; LE.area=(document.getElementById('le-area').value||'').trim(); LE.address=(document.getElementById('le-addr').value||'').trim(); LE.memo=(document.getElementById('le-memo').value||'').trim(); LE.active=document.getElementById('le-active').checked; var data=Object.assign({},LE);var id=data.id;delete data.id; data.updatedAt=window.fb.serverTimestamp(); var ref=id?locCol().doc(id):locCol().doc(); ref.set(data,{merge:true}).then(function(){closeLocModal();toast('保存しました');}).catch(function(e){console.error(e);toast('⚠ 保存に失敗');}); }
+function saveLocForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('le-name').value||'').trim(); if(!name){alert('場所名を入力してください。');return;}
+  var ti=document.getElementById('le-task-input'); if(ti&&ti.value.trim()){ if(!LE.tasks)LE.tasks=[]; var tv=ti.value.trim(); if(LE.tasks.indexOf(tv)<0)LE.tasks.push(tv); }
+  LE.name=name; LE.aliases=_arr('le-alias'); LE.tasks=LE.tasks||[];
+  LE.category=document.getElementById('le-cat').value;
+  LE.frequent=document.getElementById('le-frequent').checked;
+  LE.isBase=document.getElementById('le-base').checked;
+  LE.address=(document.getElementById('le-addr').value||'').trim();
+  var la=parseFloat(document.getElementById('le-lat').value||''), ln=parseFloat(document.getElementById('le-lng').value||'');
+  LE.lat=isNaN(la)?null:la; LE.lng=isNaN(ln)?null:ln;
+  LE.memo=(document.getElementById('le-memo').value||'').trim();
+  LE.active=document.getElementById('le-active').checked;
+  delete LE.area;   // 旧：手入力方面 廃止（座標から自動算出）
+  var data=Object.assign({},LE);var id=data.id;delete data.id; data.updatedAt=window.fb.serverTimestamp(); var ref=id?locCol().doc(id):locCol().doc(); ref.set(data,{merge:true}).then(function(){closeLocModal();toast('保存しました');}).catch(function(e){console.error(e);toast('⚠ 保存に失敗');}); }
 function deleteLocCur(){ if(!IS_ADMIN||!LE||!LE.id)return; if(!confirm(LE.name+' を削除しますか？'))return; locCol().doc(LE.id).delete().then(function(){closeLocModal();toast('削除しました');}).catch(function(e){console.error(e);toast('⚠ 削除に失敗');}); }
 
 /* ---------- portalMembers 取り込み ---------- */
