@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.3.1">
+<meta name="app-version" content="0.3.2">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -174,7 +174,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.3.1</div>
+    <div class="ver">CoreMembers v0.3.2</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -189,7 +189,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.3.1</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.3.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -605,13 +605,38 @@ function applyLatLng(p,via){
   if(st)st.textContent='✅ '+p.lat.toFixed(5)+', '+p.lng.toFixed(5)+(via?'（'+via+'）':'')+'　'+(LE.isBase?'基準':locGeoLabel({lat:p.lat,lng:p.lng}));
   locMapPreview();
 }
-/* 住所/URL/座標 → 緯度経度（まず貼付から抽出、ダメならOpenStreetMapで住所検索） */
+function inJapan(p){ return p&&p.lat>=24&&p.lat<=46&&p.lng>=122&&p.lng<=154; }
+/* 国土地理院（日本の公式ジオコーダ・住所に強い・キー不要） */
+async function gsiGeocode(q){
+  try{
+    var r=await fetch('https://msearch.gsi.go.jp/address-search/AddressSearch?q='+encodeURIComponent(q));
+    var j=await r.json();
+    if(j&&j.length){
+      j.sort(function(a,b){ return String((b.properties||{}).title||'').length-String((a.properties||{}).title||'').length; }); // 最も具体的な候補
+      var c=j[0].geometry&&j[0].geometry.coordinates;
+      if(c){ var p={lat:+c[1],lng:+c[0]}; if(inJapan(p))return p; }
+    }
+  }catch(e){ console.error('[gsi]',e); }
+  return null;
+}
+/* OpenStreetMap（場所名向け・基準地点の近くに限定して誤マッチ防止） */
+async function osmGeocode(q){
+  try{
+    var bp=basePoint(), d=1.6;
+    var vb=(bp.lng-d)+','+(bp.lat+d)+','+(bp.lng+d)+','+(bp.lat-d);
+    var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ja&countrycodes=jp&bounded=1&viewbox='+vb+'&q='+encodeURIComponent(q));
+    var j=await r.json();
+    if(j&&j.length){ var p={lat:parseFloat(j[0].lat),lng:parseFloat(j[0].lon)}; if(inJapan(p))return p; }
+  }catch(e){ console.error('[osm]',e); }
+  return null;
+}
+/* 住所/URL/座標 → 緯度経度（①貼付抽出 ②地理院[住所] ③OSM[近隣限定]） */
 async function geocodeLoc(){
   var raw=((document.getElementById('le-addr')||{}).value||'').trim();
   var nm=((document.getElementById('le-name')||{}).value||'').trim();
   var st=document.getElementById('le-geo-st');
   var p=extractLatLng(raw)||extractLatLng(nm);
-  if(p){ applyLatLng(p,'貼付座標'); return; }
+  if(p&&inJapan(p)){ applyLatLng(p,'貼付座標'); return; }
   var base=raw||nm;
   if(!base){ if(st)st.textContent='⚠ 住所/場所名、またはGoogleマップのURL・座標を入れてください'; return; }
   if(st)st.textContent='取得中…';
@@ -619,13 +644,8 @@ async function geocodeLoc(){
   base.split(/\n/).forEach(function(line){ line=line.replace(/〒\s*\d{3}-?\d{4}/,'').replace(/\s*\d+\.\d+\s*\(\d+\)\s*$/,'').trim(); if(line)queries.push(line); });
   var flat=base.replace(/\s+/g,' ').trim(); if(queries.indexOf(flat)<0)queries.push(flat);
   if(nm&&queries.indexOf(nm)<0)queries.push(nm);
-  for(var i=0;i<queries.length;i++){
-    try{
-      var r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ja&countrycodes=jp&q='+encodeURIComponent(queries[i]));
-      var j=await r.json();
-      if(j&&j.length){ applyLatLng({lat:parseFloat(j[0].lat),lng:parseFloat(j[0].lon)},'住所検索'); return; }
-    }catch(e){ console.error('[geo]',e); }
-  }
+  for(var i=0;i<queries.length;i++){ var g=await gsiGeocode(queries[i]); if(g){ applyLatLng(g,'住所(地理院)'); return; } }   // 日本住所を最優先
+  for(var k=0;k<queries.length;k++){ var o=await osmGeocode(queries[k]); if(o){ applyLatLng(o,'地図検索'); return; } }
   if(st)st.textContent='⚠ 自動取得できず。Googleマップで目的地を右クリック→先頭の数字（座標）をコピーしてこの欄に貼り、もう一度押すと確実です。緯度経度の直接入力も可。';
 }
 function locLatLngManual(){ var la=parseFloat((document.getElementById('le-lat')||{}).value); var ln=parseFloat((document.getElementById('le-lng')||{}).value); if(!isNaN(la)&&!isNaN(ln)){ LE.lat=la; LE.lng=ln; var st=document.getElementById('le-geo-st'); if(st)st.textContent='✅ '+la.toFixed(5)+', '+ln.toFixed(5)+'　'+(LE.isBase?'（基準）':locGeoLabel({lat:la,lng:ln})); locMapPreview(); } }
