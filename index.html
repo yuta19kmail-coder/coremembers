@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.7.1">
+<meta name="app-version" content="0.7.2">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.7.1</div>
+    <div class="ver">CoreMembers v0.7.2</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.1</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -684,16 +684,8 @@ function renderMemberForm(){
     '<div class="fld"><label>兼務（複数可）</label><div class="seg-pick">'+(subChips||'<span style="font-size:11px;color:var(--text3)">部署未登録</span>')+'</div></div>'+
     '<div class="fld"><label>上位役割（部より上・任意）</label><select id="me-toprole"'+dis+'><option value="">（なし）</option>'+TOP_ROLES.map(function(r){return '<option value="'+r[0]+'"'+(ME.topRole===r[0]?' selected':'')+'>'+r[1]+'</option>';}).join('')+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">代表・役員など。設定すると組織図の最上部に役割として表示（現場の部署とは別。兼任OK）。</div></div>'+
     '<div class="sec-h">雇用</div>'+
-    '<div class="row3"><div class="fld"><label>雇用形態</label><select id="me-emp"'+dis+'>'+empOpts+'</select></div><div class="fld"><label>在籍状況</label><select id="me-status"'+dis+'>'+stOpts+'</select></div><div class="fld"><label>週何日</label><input type="number" id="me-weekly" value="'+esc(ME.weeklyDays||'')+'" min="0" max="7"'+dis+'></div></div>'+
+    '<div class="row2"><div class="fld"><label>雇用形態</label><select id="me-emp"'+dis+'>'+empOpts+'</select></div><div class="fld"><label>在籍状況</label><select id="me-status"'+dis+'>'+stOpts+'</select></div></div>'+
     '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
-    '<div class="sec-h">連絡先（社内）</div>'+
-    '<div class="row3"><div class="fld"><label>内線</label><input type="text" id="me-ext" value="'+esc(ME.ext||'')+'"'+dis+'></div><div class="fld"><label>携帯</label><input type="text" id="me-mobile" value="'+esc(ME.mobile||'')+'"'+dis+'></div><div class="fld"><label>メール</label><input type="text" id="me-email" value="'+esc(ME.emailWork||'')+'"'+dis+'></div></div>'+
-    '<div class="sec-h">能力（スキル）<span style="font-size:11px;color:var(--text3);font-weight:400">　※ 編集は「🧩 スキル管理」で（ここは結果のみ）</span></div>'+
-    '<details class="skde"><summary>▼ 結果を見る（展開）</summary><div class="skde-body">'+memberSkillSummaryHTML(ME)+'</div></details>'+
-    '<div class="fld"><label>生活圏（ついで配車の参考・任意）</label><input type="text" id="me-home" value="'+esc(ME.homeArea||'')+'" placeholder="例：柏市内"'+dis+'></div>'+
-    '<div class="sec-h">スキル・資格</div>'+
-    '<div class="row2"><div class="fld"><label>資格（カンマ区切り）</label><input type="text" id="me-certs" value="'+esc((ME.certs||[]).join(', '))+'" placeholder="整備士2級, 検査員"'+dis+'></div><div class="fld"><label>得意タグ（カンマ区切り）</label><input type="text" id="me-skills" value="'+esc((ME.skillTags||[]).join(', '))+'" placeholder="板金, 接客, 電装"'+dis+'></div></div>'+
-    '<div class="row2"><div class="fld"><label>得意</label><textarea id="me-str"'+dis+'>'+esc(ME.strengths||'')+'</textarea></div><div class="fld"><label>苦手・注意</label><textarea id="me-weak"'+dis+'>'+esc(ME.weaknesses||'')+'</textarea></div></div>'+
     '<div class="sec-h">アプリ連携</div>'+
     '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">ログインさせる人だけ紐づけ。週2バイト等は「なし」でOK。</div></div>'+
     (ro?'<div style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</div>':'');
@@ -733,18 +725,10 @@ function saveMemberForm(){
   ME.topRole=document.getElementById('me-toprole').value||'';
   ME.employmentType=document.getElementById('me-emp').value||'fulltime';
   ME.status=document.getElementById('me-status').value||'active';
-  ME.weeklyDays=document.getElementById('me-weekly').value||'';
   ME.joinedAt=document.getElementById('me-joined').value||'';
   ME.showInSchedule=document.getElementById('me-show').checked;
   ME.schedulable=document.getElementById('me-sched').checked;
-  ME.ext=(document.getElementById('me-ext').value||'').trim();
-  ME.mobile=(document.getElementById('me-mobile').value||'').trim();
-  ME.emailWork=(document.getElementById('me-email').value||'').trim();
-  // 近場のみ・運転得意度・運転メモ は「スキル管理」で編集（ここでは ME の現値を保持）
-  ME.homeArea=(document.getElementById('me-home').value||'').trim();
-  ME.certs=_arr('me-certs'); ME.skillTags=_arr('me-skills');
-  ME.strengths=(document.getElementById('me-str').value||'').trim();
-  ME.weaknesses=(document.getElementById('me-weak').value||'').trim();
+  // 週何日・連絡先・生活圏・スキル(資格/得意/苦手)・運転補足 はモーダルから撤去。既存値は ME のまま保持。
   ME.portalMemberId=document.getElementById('me-portal').value||'';
   ME.locSkills=ME.locSkills||{};
   // 空エントリ掃除
