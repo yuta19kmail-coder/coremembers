@@ -106,6 +106,31 @@
   .execcard .lt{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   .execcard .ls{font-size:11px;color:var(--text3);margin-top:1px}
   .lwrap{margin-bottom:7px}
+  /* スキル管理マトリクス（v0.6.0） */
+  .sk-tabs{display:flex;gap:6px;flex-wrap:wrap}
+  .sk-tab{font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text2);cursor:pointer}
+  .sk-tab.on{background:var(--bg3);color:var(--text);border-color:var(--acc)}
+  .sk-wrap{overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:10px}
+  .skmx{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap}
+  .skmx th,.skmx td{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .skmx thead th{position:sticky;top:0;background:var(--bg2);z-index:2;padding:5px 7px;font-weight:700;color:var(--text2)}
+  .skmx thead .sk-loc{background:var(--bg3);color:var(--text)}
+  .skmx .sk-name{position:sticky;left:0;background:var(--bg2);z-index:1;text-align:left;padding:5px 9px;min-width:104px;color:var(--text)}
+  .skmx thead .sk-name,.skmx .sk-corner{z-index:3}
+  .skmx td{text-align:center;padding:0}
+  .skcell{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;cursor:pointer;color:#34d399;font-weight:800;font-size:13px}
+  .skcell.on{background:rgba(29,185,122,.18)}
+  .lcell{display:inline-flex;align-items:center;justify-content:center;width:36px;height:26px;cursor:pointer;color:var(--text3);font-size:13px}
+  .lcell.on-ok{background:rgba(29,185,122,.18)}
+  .lcell.on-never{background:rgba(252,211,77,.18)}
+  .skde{margin:2px 0 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg2)}
+  .skde>summary{cursor:pointer;padding:8px 10px;font-size:12.5px;color:var(--text2);user-select:none}
+  .skde-body{padding:2px 10px 10px}
+  .sumrow{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border);flex-wrap:wrap}
+  .sumrow:first-child{border-top:none}
+  .sumlbl{font-size:11.5px;color:var(--text3);min-width:96px;font-weight:700}
+  .sumchip{font-size:11.5px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:1px 7px;margin:1px}
+  .summute{font-size:11.5px;color:var(--text3)}
   .lwrap .lrow{margin-bottom:0}
   .ltask-children{margin:4px 0 0 18px;border-left:2px solid var(--border);padding-left:11px;display:flex;flex-direction:column;gap:3px}
   .ltask-child{font-size:12px;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:3px 9px}
@@ -221,6 +246,7 @@
     <div class="si-title">マスター</div>
     <div class="si-item" data-v="org" onclick="showView('org')"><span class="ic">🏢</span><span>組織（部署）</span></div>
     <div class="si-item" data-v="locations" onclick="showView('locations')"><span class="ic">📍</span><span>場所マスター</span></div>
+    <div class="si-item" data-v="skills" onclick="showView('skills')"><span class="ic">🧩</span><span>スキル管理</span></div>
     <div class="si-item" data-v="settings" onclick="showView('settings')"><span class="ic">⚙️</span><span>設定</span></div>
     <div class="si-title">情報</div>
     <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このアプリについて</span></div>
@@ -252,6 +278,13 @@
       <div class="vhead"><div class="vtitle">📍 場所マスター</div><div class="spacer"></div><button class="vh-btn primary" onclick="openLocModal(null)">＋ 場所を追加</button></div>
       <p style="font-size:12px;color:var(--text3);margin:0 0 12px">陸運局・部品商・拠点・顧客先など。社員の「行ける場所」やMHSの場所軸・PitFlow配車の行き先に使います。方面（area）で同方面のまとめ取りに。</p>
       <div id="loc-list"></div>
+    </section>
+
+    <!-- スキル管理（マトリクス編集） -->
+    <section id="view-skills" class="view">
+      <div class="vhead"><div class="vtitle">🧩 スキル管理</div><div class="spacer"></div><div id="skills-tabs" class="sk-tabs"></div></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 10px">社員（行）× 項目（列）の表で、まとめて編集できます。セルをクリックで切り替え、その場で保存されます。社員詳細では結果だけ畳んで表示されます。</p>
+      <div id="skills-body"></div>
     </section>
 
     <!-- 設定 -->
@@ -377,6 +410,9 @@ const LICENSES=['普通','準中型','中型','大型','けん引','普通二種
 const SIZES=['軽','普通','1BOX','ハイエース','2t','特殊'];
 const DRIVE_CAPS=[['left','左ハンドル'],['big1','大型①(BIGセダン)'],['big2','大型②(ゲレンデ・ランクル)']];
 const REG_TASKS=['中古新規','名義変更','ナンバー変更','住所変更'];
+// v0.6.0: 「乗れる車」は設定（coreSettings/app.driveSkills）で増減できる。未設定時は DRIVE_CAPS にフォールバック。
+let DRIVE_SKILLS=DRIVE_CAPS.slice();
+function driveSkillLabel(key){ var x=DRIVE_SKILLS.find(function(e){return e[0]===key;}); return x?x[1]:(key||''); }
 const DEPT_TYPES=[['division','部'],['section','課'],['team','班'],['site','拠点']];
 const TOP_ROLES=[['daihyo','代表'],['fukudaihyo','副代表'],['senmu','専務'],['jomu','常務'],['torishimari','取締役'],['komon','顧問']];
 function topRoleLabel(v){ var x=TOP_ROLES.find(function(e){return e[0]===v;}); return x?x[1]:''; }
@@ -406,7 +442,7 @@ function locCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).c
 function setCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('coreSettings'); }
 function setDoc(){ return setCol().doc('app'); }
 let SETTINGS={}; let _suns=null;
-function subscribeSettings(){ if(_suns)return; _suns=setDoc().onSnapshot(function(d){ SETTINGS=d.exists?(d.data()||{}):{}; if(Array.isArray(SETTINGS.locCats)&&SETTINGS.locCats.length){ LOC_CATS=SETTINGS.locCats.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { LOC_CATS=DEFAULT_LOC_CATS.slice(); } if(curView==='locations')renderLocations(); if(curView==='settings')renderSettings(); }, function(e){console.error('[CM] settings',e);}); }
+function subscribeSettings(){ if(_suns)return; _suns=setDoc().onSnapshot(function(d){ SETTINGS=d.exists?(d.data()||{}):{}; if(Array.isArray(SETTINGS.locCats)&&SETTINGS.locCats.length){ LOC_CATS=SETTINGS.locCats.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { LOC_CATS=DEFAULT_LOC_CATS.slice(); } if(Array.isArray(SETTINGS.driveSkills)&&SETTINGS.driveSkills.length){ DRIVE_SKILLS=SETTINGS.driveSkills.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { DRIVE_SKILLS=DRIVE_CAPS.slice(); } if(curView==='locations')renderLocations(); if(curView==='settings')renderSettings(); if(curView==='skills')renderSkills(); }, function(e){console.error('[CM] settings',e);}); }
 function portalCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers'); }
 let _muns=null,_duns=null,_luns=null;
 function subscribeMembers(){ if(_muns)return; _muns=memCol().onSnapshot(function(s){ MEMBERS=[]; s.forEach(function(d){var m=d.data()||{};m.id=d.id;MEMBERS.push(m);}); MEMBERS.sort(function(a,b){return String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='members')renderMembers(); else if(curView==='org')renderOrg(); }, function(e){console.error('[CM] members',e);setSyncState(false);}); }
@@ -419,6 +455,7 @@ function deptById(id){ for(var i=0;i<DEPTS.length;i++)if(DEPTS[i].id===id)return
 function locById(id){ for(var i=0;i<LOCS.length;i++)if(LOCS[i].id===id)return LOCS[i]; return null; }
 function deptName(id){ var d=deptById(id); return d?d.name:''; }
 function deptColor(id){ var d=deptById(id); return (d&&d.color)||'#64748b'; }
+function locName(id){ var l=locById(id); return l?l.name:''; }
 // v0.6.0: 社員の所属を「部（最上位）」と「課（その下）」に解決して返す。
 //   旧データで主所属に課が入っていても、部＝親 / 課＝その課 に読み替える。
 function memberDeptIds(m){ var pid=(m&&m.primaryDeptId)||''; var sid=(m&&m.sectionDeptId)||''; var pd=deptById(pid); if(pd&&pd.parentId){ if(!sid)sid=pid; pid=pd.parentId; } return {deptId:pid, sectionId:sid}; }
@@ -441,7 +478,7 @@ function showView(v){
   document.querySelectorAll('.si-item').forEach(function(i){i.classList.remove('active');});
   var el=document.getElementById('view-'+v); if(el)el.classList.add('active');
   document.querySelectorAll('.si-item[data-v="'+v+'"]').forEach(function(i){i.classList.add('active');});
-  if(v==='members')renderMembers(); else if(v==='org')renderOrg(); else if(v==='locations')renderLocations(); else if(v==='settings')renderSettings();
+  if(v==='members')renderMembers(); else if(v==='org')renderOrg(); else if(v==='locations')renderLocations(); else if(v==='skills')renderSkills(); else if(v==='settings')renderSettings();
 }
 
 /* ---------- 社員名簿 ---------- */
@@ -533,15 +570,10 @@ function renderMemberForm(){
     '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
     '<div class="sec-h">連絡先（社内）</div>'+
     '<div class="row3"><div class="fld"><label>内線</label><input type="text" id="me-ext" value="'+esc(ME.ext||'')+'"'+dis+'></div><div class="fld"><label>携帯</label><input type="text" id="me-mobile" value="'+esc(ME.mobile||'')+'"'+dis+'></div><div class="fld"><label>メール</label><input type="text" id="me-email" value="'+esc(ME.emailWork||'')+'"'+dis+'></div></div>'+
-    '<div class="sec-h">運転スキル（MHS/PitFlow配車が参照）</div>'+
-    '<div class="fld"><label>免許・運転資格</label><div class="seg-pick">'+licChips+'</div></div>'+
-    '<div class="fld"><label>運転できる車</label><div class="seg-pick">'+driveChips+'</div></div>'+
-    '<div class="row3"><div class="fld"><label>MT</label><div style="padding-top:6px"><label class="toggle"><input type="checkbox" id="me-mt" '+(ME.mt?'checked':'')+dis+'> MT可</label></div></div><div class="fld"><label>制約</label><div style="padding-top:6px"><label class="toggle"><input type="checkbox" id="me-near" '+(ME.nearOnly?'checked':'')+dis+'> 近場のみ</label></div></div><div class="fld"><label>運転得意度（1-5）</label><select id="me-conf"'+dis+'>'+confOpts+'</select></div></div>'+
+    '<div class="sec-h">能力（スキル）<span style="font-size:11px;color:var(--text3);font-weight:400">　※ 乗れる車・免許・登録業務・場所×業務は「🧩 スキル管理」で編集</span></div>'+
+    '<details class="skde"><summary>▼ 結果を見る（展開）</summary><div class="skde-body">'+memberSkillSummaryHTML(ME)+'</div></details>'+
+    '<div class="row2"><div class="fld"><label>制約</label><div style="padding-top:6px"><label class="toggle"><input type="checkbox" id="me-near" '+(ME.nearOnly?'checked':'')+dis+'> 近場のみ</label></div></div><div class="fld"><label>運転得意度（1-5）</label><select id="me-conf"'+dis+'>'+confOpts+'</select></div></div>'+
     '<div class="fld"><label>運転メモ</label><input type="text" id="me-dnotes" value="'+esc(ME.drivingNotes||'')+'" placeholder="例：高速苦手 / 大型は要相談"'+dis+'></div>'+
-    '<div class="sec-h">登録業務</div>'+
-    '<div class="fld"><label>できる登録業務</label><div class="seg-pick">'+regChips+'</div></div>'+
-    '<div class="sec-h">行ける場所・できる業務（場所 × 業務）</div>'+
-    '<div class="fld"><label>場所名をクリックで <span style="color:#37d39a">✅行ける</span>→<span style="color:#fcd34d">🔶行ったことない</span>→未設定。その下のタグは<b>その場所でできる業務</b>。</label>'+locBlocks+'</div>'+
     '<div class="fld"><label>生活圏（ついで配車の参考・任意）</label><input type="text" id="me-home" value="'+esc(ME.homeArea||'')+'" placeholder="例：柏市内"'+dis+'></div>'+
     '<div class="sec-h">スキル・資格</div>'+
     '<div class="row2"><div class="fld"><label>資格（カンマ区切り）</label><input type="text" id="me-certs" value="'+esc((ME.certs||[]).join(', '))+'" placeholder="整備士2級, 検査員"'+dis+'></div><div class="fld"><label>得意タグ（カンマ区切り）</label><input type="text" id="me-skills" value="'+esc((ME.skillTags||[]).join(', '))+'" placeholder="板金, 接客, 電装"'+dis+'></div></div>'+
@@ -592,7 +624,6 @@ function saveMemberForm(){
   ME.ext=(document.getElementById('me-ext').value||'').trim();
   ME.mobile=(document.getElementById('me-mobile').value||'').trim();
   ME.emailWork=(document.getElementById('me-email').value||'').trim();
-  ME.mt=document.getElementById('me-mt').checked;
   ME.nearOnly=document.getElementById('me-near').checked;
   ME.drivingConfidence=document.getElementById('me-conf').value||'';
   ME.drivingNotes=(document.getElementById('me-dnotes').value||'').trim();
@@ -612,6 +643,67 @@ function saveMemberForm(){
   ref.set(data,{merge:true}).then(function(){ closeMemberModal(); toast('保存しました'); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
 }
 function deleteMemberCur(){ if(!IS_ADMIN||!ME||!ME.id)return; if(!confirm(ME.name+' を名簿から削除しますか？'))return; memCol().doc(ME.id).delete().then(function(){ closeMemberModal(); toast('削除しました'); }).catch(function(e){ console.error(e); toast('⚠ 削除に失敗'); }); }
+
+/* ---------- スキル管理（社員×項目のマトリクス編集・v0.6.0） ---------- */
+let skillTab='drive';
+function saveMemberField(id, patch){ patch.updatedAt=window.fb.serverTimestamp(); patch.updatedBy=(window.fb.currentUser&&window.fb.currentUser.uid)||null; return memCol().doc(id).set(patch,{merge:true}); }
+function skillMembersList(){ return MEMBERS.filter(function(m){return m.status!=='left';}); }
+function setSkillTab(t){ skillTab=t; renderSkills(); }
+function renderSkills(){
+  var tabs=[['drive','🚗 乗れる車'],['license','🪪 免許・MT'],['reg','📝 登録業務'],['loc','📍 場所×業務']];
+  var tb=document.getElementById('skills-tabs'); if(tb)tb.innerHTML=tabs.map(function(t){return '<button class="sk-tab'+(skillTab===t[0]?' on':'')+'" onclick="setSkillTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
+  var body=document.getElementById('skills-body'); if(!body)return;
+  if(!skillMembersList().length){ body.innerHTML='<div class="empty">社員が未登録です。</div>'; return; }
+  var html='';
+  if(skillTab==='drive'){ html=DRIVE_SKILLS.length?skillMatrixSimple('driveCaps',DRIVE_SKILLS,[]):'<div class="empty">「乗れる車」の項目が未設定です。⚙️設定で追加してください。</div>'; }
+  else if(skillTab==='license'){ html=skillMatrixSimple('licenses',LICENSES.map(function(x){return [x,x];}),[['mt','MT']]); }
+  else if(skillTab==='reg'){ html=skillMatrixSimple('regTasks',REG_TASKS.map(function(x){return [x,x];}),[]); }
+  else { html=skillMatrixLoc(); }
+  body.innerHTML='<div class="sk-wrap">'+html+'</div>'+(IS_ADMIN?'':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>');
+}
+function skillMatrixSimple(field, items, boolCols){
+  boolCols=boolCols||[];
+  var head=items.map(function(it){return '<th class="sk-col">'+esc(it[1])+'</th>';}).join('')+boolCols.map(function(b){return '<th class="sk-col">'+esc(b[1])+'</th>';}).join('');
+  var rows=skillMembersList().map(function(m){
+    var c1=items.map(function(it){ var on=(m[field]||[]).indexOf(it[0])>=0; return '<td>'+skCellArr(m.id,field,it[0],on)+'</td>'; }).join('');
+    var c2=boolCols.map(function(b){ var on=!!m[b[0]]; return '<td>'+skCellBool(m.id,b[0],on)+'</td>'; }).join('');
+    return '<tr><th class="sk-name">'+esc(m.name)+'</th>'+c1+c2+'</tr>';
+  }).join('');
+  return '<table class="skmx"><thead><tr><th class="sk-name sk-corner">社員</th>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function skCellArr(id,field,key,on){ return '<span class="skcell'+(on?' on':'')+'"'+(IS_ADMIN?' onclick="skillToggleArr(\''+escA(id)+'\',\''+escA(field)+'\',\''+escA(key)+'\',this)"':'')+'>'+(on?'✓':'')+'</span>'; }
+function skCellBool(id,field,on){ return '<span class="skcell'+(on?' on':'')+'"'+(IS_ADMIN?' onclick="skillToggleBool(\''+escA(id)+'\',\''+escA(field)+'\',this)"':'')+'>'+(on?'✓':'')+'</span>'; }
+function skillToggleArr(id,field,key,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; if(!Array.isArray(m[field]))m[field]=[]; var i=m[field].indexOf(key); if(i>=0)m[field].splice(i,1); else m[field].push(key); var on=i<0; el.classList.toggle('on',on); el.textContent=on?'✓':''; var patch={}; patch[field]=m[field].slice(); saveMemberField(id,patch).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
+function skillToggleBool(id,field,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; m[field]=!m[field]; el.classList.toggle('on',!!m[field]); el.textContent=m[field]?'✓':''; var patch={}; patch[field]=!!m[field]; saveMemberField(id,patch).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
+function skillMatrixLoc(){
+  var locs=LOCS.filter(function(l){return l.active!==false;});
+  if(!locs.length)return '<div class="empty">場所マスターが未登録です（📍場所マスターで追加）。</div>';
+  var top='<tr><th class="sk-name sk-corner" rowspan="2">社員</th>'; var sub='<tr>';
+  locs.forEach(function(l){ var tks=l.tasks||[]; top+='<th class="sk-loc" colspan="'+(1+tks.length)+'">'+esc(l.name)+'</th>'; sub+='<th class="sk-col sk-status">行ける</th>'+tks.map(function(t){return '<th class="sk-col">'+esc(t)+'</th>';}).join(''); });
+  top+='</tr>'; sub+='</tr>';
+  var rows=skillMembersList().map(function(m){
+    var sk=m.locSkills||{};
+    var cells=locs.map(function(l){ var s=sk[l.id]||{}; var taskCells=(l.tasks||[]).map(function(t){ var on=(s.tasks||[]).indexOf(t)>=0; return '<td>'+skLocTaskCell(m.id,l.id,t,on)+'</td>'; }).join(''); return '<td>'+skLocStatusCell(m.id,l.id,s.status)+'</td>'+taskCells; }).join('');
+    return '<tr><th class="sk-name">'+esc(m.name)+'</th>'+cells+'</tr>';
+  }).join('');
+  return '<table class="skmx"><thead>'+top+sub+'</thead><tbody>'+rows+'</tbody></table>';
+}
+function skLocStatusCell(id,locId,st){ var cls=st==='ok'?' on-ok':(st==='never'?' on-never':''); var t=st==='ok'?'✅':(st==='never'?'🔶':'・'); return '<span class="lcell'+cls+'"'+(IS_ADMIN?' onclick="skillLocCycle(\''+escA(id)+'\',\''+escA(locId)+'\',this)"':'')+'>'+t+'</span>'; }
+function skLocTaskCell(id,locId,task,on){ return '<span class="skcell'+(on?' on':'')+'"'+(IS_ADMIN?' onclick="skillLocTask(\''+escA(id)+'\',\''+escA(locId)+'\',\''+escA(task)+'\',this)"':'')+'>'+(on?'✓':'')+'</span>'; }
+function skillLocCycle(id,locId,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; if(!m.locSkills)m.locSkills={}; var sk=m.locSkills[locId]||(m.locSkills[locId]={}); var s=sk.status; var n=(!s)?'ok':(s==='ok'?'never':null); if(n)sk.status=n; else { delete sk.status; if(!(sk.tasks&&sk.tasks.length))delete m.locSkills[locId]; } el.className='lcell'+(n==='ok'?' on-ok':(n==='never'?' on-never':'')); el.textContent=n==='ok'?'✅':(n==='never'?'🔶':'・'); var goable=Object.keys(m.locSkills).filter(function(k){return m.locSkills[k].status==='ok';}); m.goableLocationIds=goable; saveMemberField(id,{locSkills:m.locSkills,goableLocationIds:goable}).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
+function skillLocTask(id,locId,task,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; if(!m.locSkills)m.locSkills={}; var sk=m.locSkills[locId]||(m.locSkills[locId]={}); if(!sk.tasks)sk.tasks=[]; var i=sk.tasks.indexOf(task); if(i>=0)sk.tasks.splice(i,1); else sk.tasks.push(task); el.classList.toggle('on',i<0); el.textContent=i<0?'✓':''; saveMemberField(id,{locSkills:m.locSkills}).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
+// 社員詳細用：能力サマリー（読み取り専用・展開で表示）
+function memberSkillSummaryHTML(m){
+  function chips(arr){ return arr.length?arr.map(function(x){return '<span class="sumchip">'+esc(x)+'</span>';}).join(''):'<span class="summute">—</span>'; }
+  var drive=(m.driveCaps||[]).map(driveSkillLabel).filter(Boolean);
+  var lic=(m.licenses||[]).slice(); if(m.mt)lic.push('MT');
+  var reg=(m.regTasks||[]).slice();
+  var locs=Object.keys(m.locSkills||{}).map(function(lid){ var s=m.locSkills[lid]||{}; var nm=locName(lid); if(!nm)return ''; var mark=s.status==='ok'?'✅':(s.status==='never'?'🔶':''); var tk=(s.tasks||[]).length?'（'+s.tasks.join('・')+'）':''; return mark+nm+tk; }).filter(Boolean);
+  return '<div class="sumrow"><span class="sumlbl">🚗 乗れる車</span>'+chips(drive)+'</div>'+
+    '<div class="sumrow"><span class="sumlbl">🪪 免許・MT</span>'+chips(lic)+'</div>'+
+    '<div class="sumrow"><span class="sumlbl">📝 登録業務</span>'+chips(reg)+'</div>'+
+    '<div class="sumrow"><span class="sumlbl">📍 場所×業務</span>'+chips(locs)+'</div>';
+}
 
 /* ---------- 組織（部署） ---------- */
 function deptRowHTML(d,depth){
@@ -725,9 +817,10 @@ function saveLocForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('
 function deleteLocCur(){ if(!IS_ADMIN||!LE||!LE.id)return; if(!confirm(LE.name+' を削除しますか？'))return; locCol().doc(LE.id).delete().then(function(){closeLocModal();toast('削除しました');}).catch(function(e){console.error(e);toast('⚠ 削除に失敗');}); }
 
 /* ---------- 設定（場所カテゴリの編集・並び替え） ---------- */
-let CATEDIT=null;
+let CATEDIT=null, DSEDIT=null;
 function renderSettings(){
   if(!CATEDIT) CATEDIT=LOC_CATS.map(function(c){return {key:c[0],label:c[1]};});
+  if(!DSEDIT) DSEDIT=DRIVE_SKILLS.map(function(c){return {key:c[0],label:c[1]};});
   var ro=!IS_ADMIN;
   var rows=CATEDIT.map(function(c,i){
     var cnt=LOCS.filter(function(l){return l.category===c.key;}).length;
@@ -737,12 +830,37 @@ function renderSettings(){
       +(ro?'':'<button class="iconbtn" title="上へ" onclick="catMove('+i+',-1)">↑</button><button class="iconbtn" title="下へ" onclick="catMove('+i+',1)">↓</button><button class="iconbtn" title="削除" onclick="catDel('+i+')">🗑</button>')
       +'</div>';
   }).join('');
+  var dsRows=DSEDIT.map(function(c,i){
+    var cnt=MEMBERS.filter(function(m){return (m.driveCaps||[]).indexOf(c.key)>=0;}).length;
+    return '<div class="catrow"><span class="catord">'+(i+1)+'</span>'
+      +'<input type="text" class="catinput" value="'+esc(c.label)+'"'+(ro?' disabled':' oninput="dsSetLabel('+i+',this.value)"')+'>'
+      +'<span class="catcnt">'+(cnt?cnt+'人':'未使用')+'</span>'
+      +(ro?'':'<button class="iconbtn" title="上へ" onclick="dsMove('+i+',-1)">↑</button><button class="iconbtn" title="下へ" onclick="dsMove('+i+',1)">↓</button><button class="iconbtn" title="削除" onclick="dsDel('+i+')">🗑</button>')
+      +'</div>';
+  }).join('');
   document.getElementById('settings-body').innerHTML=
-    '<div class="note-card"><h4>📍 場所カテゴリ（ラベル）</h4>'
+    '<div class="note-card"><h4>🚗 乗れる車（運転スキルの項目）</h4>'
+    +'<p style="font-size:12px;color:var(--text3);margin:0 0 10px">「スキル管理」の<b>乗れる車</b>の列になる項目です。名称変更・並び替え・追加・削除ができます（各社員のチェックは「スキル管理」で）。</p>'
+    +'<div id="ds-list">'+dsRows+'</div>'
+    +(IS_ADMIN?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-ghost" onclick="dsAdd()">＋ 項目追加</button><button class="btn-save" onclick="saveDriveSkills()">保存</button><button class="btn-ghost" onclick="dsReset()">変更を破棄</button></div><div id="ds-st" style="font-size:11px;color:var(--text3);margin-top:8px"></div>':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※編集は管理者のみ。</p>')
+    +'</div>'
+    +'<div class="note-card"><h4>📍 場所カテゴリ（ラベル）</h4>'
     +'<p style="font-size:12px;color:var(--text3);margin:0 0 10px">場所マスターの分類ラベル。名称変更・並び替え・追加・削除ができます。並び順は場所一覧の表示順（自社→よく使う→カテゴリ→五十音）にも反映されます。</p>'
     +'<div id="cat-list">'+rows+'</div>'
     +(IS_ADMIN?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-ghost" onclick="catAdd()">＋ カテゴリ追加</button><button class="btn-save" onclick="saveCats()">保存</button><button class="btn-ghost" onclick="catReset()">変更を破棄</button></div><div id="cat-st" style="font-size:11px;color:var(--text3);margin-top:8px"></div>':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※編集は管理者のみ。</p>')
     +'</div>';
+}
+function dsSetLabel(i,v){ if(DSEDIT&&DSEDIT[i])DSEDIT[i].label=v; }
+function dsMove(i,d){ var j=i+d; if(j<0||j>=DSEDIT.length)return; var t=DSEDIT[i];DSEDIT[i]=DSEDIT[j];DSEDIT[j]=t; renderSettings(); }
+function dsDel(i){ var c=DSEDIT[i]; if(!c)return; var cnt=MEMBERS.filter(function(m){return (m.driveCaps||[]).indexOf(c.key)>=0;}).length; if(cnt){ if(!confirm('「'+c.label+'」は '+cnt+' 人に設定されています。削除すると、その人からこの項目が外れます（チェックは消えます）。削除しますか？'))return; } else if(!confirm('「'+c.label+'」を削除しますか？'))return; DSEDIT.splice(i,1); renderSettings(); }
+function dsAdd(){ if(!DSEDIT)DSEDIT=[]; DSEDIT.push({key:'d'+Date.now().toString(36),label:'新しい項目'}); renderSettings(); var ins=document.querySelectorAll('#ds-list .catinput'); var last=ins[ins.length-1]; if(last){last.focus();last.select();} }
+function dsReset(){ DSEDIT=null; renderSettings(); toast('変更を破棄しました'); }
+function saveDriveSkills(){ if(!IS_ADMIN){toast('編集は管理者のみ');return;}
+  if(!DSEDIT||!DSEDIT.length){ if(!confirm('項目が0個です。空のまま保存しますか？（乗れる車の列が無くなります）'))return; }
+  for(var i=0;i<(DSEDIT||[]).length;i++){ if(!String(DSEDIT[i].label||'').trim()){ alert((i+1)+'番目のラベルが空です。'); return; } }
+  var items=(DSEDIT||[]).map(function(c){return {key:c.key,label:String(c.label).trim()};});
+  var st=document.getElementById('ds-st'); if(st)st.textContent='保存中…';
+  setDoc().set({driveSkills:items,updatedAt:window.fb.serverTimestamp()},{merge:true}).then(function(){ DSEDIT=null; toast('「乗れる車」の項目を保存しました'); }).catch(function(e){ console.error(e); if(st)st.textContent='⚠ 保存に失敗（権限/通信）'; });
 }
 function catSetLabel(i,v){ if(CATEDIT&&CATEDIT[i])CATEDIT[i].label=v; }
 function catMove(i,d){ var j=i+d; if(j<0||j>=CATEDIT.length)return; var t=CATEDIT[i];CATEDIT[i]=CATEDIT[j];CATEDIT[j]=t; renderSettings(); }
