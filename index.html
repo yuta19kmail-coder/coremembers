@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.3.3">
+<meta name="app-version" content="0.3.4">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -174,7 +174,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.3.3</div>
+    <div class="ver">CoreMembers v0.3.4</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -189,7 +189,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.3.3</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.3.4</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -363,6 +363,7 @@ function empLabel(v){var x=EMP_TYPES.find(function(e){return e[0]===v;});return 
 function statusLabel(v){var x=STATUSES.find(function(e){return e[0]===v;});return x?x[1]:(v||'在籍');}
 function deptTypeLabel(v){var x=DEPT_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'課');}
 function locCatLabel(v){var x=LOC_CATS.find(function(e){return e[0]===v;});return x?x[1]:(v||'その他');}
+function locCatIndex(v){ for(var i=0;i<LOC_CATS.length;i++)if(LOC_CATS[i][0]===v)return i; return 99; }
 /* ---- 基準地点（会社）からの方角・距離 自動算出 ---- */
 const BASE_FALLBACK={lat:35.8007,lng:139.9436,name:'松戸市五香(暫定)'};   // 基準未設定時の暫定座標
 function baseLoc(){ for(var i=0;i<LOCS.length;i++){ var l=LOCS[i]; if(l.isBase&&l.lat!=null&&l.lng!=null)return l; } return null; }
@@ -620,7 +621,7 @@ function delLocTask(i){ if(!LE.tasks)return; LE.tasks.splice(i,1); renderLocTask
 function renderLocations(){
   var h='';
   if(!LOCS.length){ h='<div class="empty">場所が未登録です。'+(IS_ADMIN?'「＋ 場所を追加」から（例：陸運局A(柏)・◯◯部品商・本社）。':'')+'</div>'; }
-  var list=LOCS.slice().sort(function(a,b){ return (b.frequent?1:0)-(a.frequent?1:0)||(a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja'); });
+  var list=LOCS.slice().sort(function(a,b){ return (b.isBase?1:0)-(a.isBase?1:0)||(b.frequent?1:0)-(a.frequent?1:0)||locCatIndex(a.category)-locCatIndex(b.category)||String(a.name||'').localeCompare(String(b.name||''),'ja'); });
   list.forEach(function(l){
     var mapBtn=(l.address||l.name)?'<a class="iconbtn" href="'+mapsUrl(l.address||l.name)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Googleマップで開く">🗺</a>':'';
     var geo=locGeoLabel(l);
