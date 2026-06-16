@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.1.2">
+<meta name="app-version" content="0.1.3">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -160,7 +160,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.1.2</div>
+    <div class="ver">CoreMembers v0.1.3</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -175,7 +175,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.1.2</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.1.3</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -539,19 +539,27 @@ function deleteDeptCur(){ if(!IS_ADMIN||!DE||!DE.id)return; if(!confirm(DE.name+
 /* ---------- 場所マスター ---------- */
 function mapsUrl(q){ return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q||''); }
 function openLocMap(){ var a=(document.getElementById('le-addr')||{}).value||(document.getElementById('le-name')||{}).value||''; if(!a){ toast('住所か場所名を入れてください'); return; } window.open(mapsUrl(a),'_blank','noopener'); }
+function locMapPreview(){ var a=(document.getElementById('le-addr')||{}).value||''; var f=document.getElementById('le-map-frame'); if(!f)return; if(a.trim()){ f.src='https://maps.google.com/maps?q='+encodeURIComponent(a)+'&z=16&output=embed'; f.style.display='block'; } else { f.style.display='none'; f.removeAttribute('src'); } }
 function renderLocations(){
   var h='';
   if(!LOCS.length){ h='<div class="empty">場所が未登録です。'+(IS_ADMIN?'「＋ 場所を追加」から（例：陸運局A(柏)・◯◯部品商・本社）。':'')+'</div>'; }
   LOCS.forEach(function(l){
     var mapBtn=(l.address||l.name)?'<a class="iconbtn" href="'+mapsUrl(l.address||l.name)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Googleマップで開く">🗺</a>':'';
-    h+='<div class="lrow"><div class="grow"><div class="lt">'+esc(l.name)+' <span class="badge b-emp">'+locCatLabel(l.category)+'</span>'+(l.active===false?'<span class="badge b-off">無効</span>':'')+'</div><div class="ls">'+(l.area?'方面：'+esc(l.area):'')+(l.address?(l.area?'・':'')+esc(l.address):'')+(l.memo?'・'+esc(l.memo):'')+'</div></div>'+mapBtn+(IS_ADMIN?'<button class="iconbtn" onclick="openLocModal(\''+escA(l.id)+'\')">✏️</button>':'')+'</div>';
+    h+='<div class="lrow"><div class="grow"><div class="lt">'+esc(l.name)+' <span class="badge b-emp">'+locCatLabel(l.category)+'</span>'+(l.active===false?'<span class="badge b-off">無効</span>':'')+'</div><div class="ls">'+(l.aliases&&l.aliases.length?'通称「'+esc(l.aliases.join('・'))+'」 ':'')+(l.area?'方面：'+esc(l.area):'')+(l.address?(l.area?'・':'')+esc(l.address):'')+(l.memo?'・'+esc(l.memo):'')+'</div></div>'+mapBtn+(IS_ADMIN?'<button class="iconbtn" onclick="openLocModal(\''+escA(l.id)+'\')">✏️</button>':'')+'</div>';
   });
   document.getElementById('loc-list').innerHTML=h;
 }
 let LE=null;
-function openLocModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=locById(id);LE=s?JSON.parse(JSON.stringify(s)):null;if(!LE)return;}else{LE={id:null,name:'',category:'rikuun',area:'',address:'',memo:'',order:LOCS.length,active:true};} document.getElementById('lm-title').textContent=id?'場所を編集':'場所を追加'; document.getElementById('lm-del').style.display=id?'inline-block':'none'; var catOpts=LOC_CATS.map(function(e){return '<option value="'+e[0]+'"'+(LE.category===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); document.getElementById('lm-body').innerHTML='<div class="fld"><label>場所名 *</label><input type="text" id="le-name" value="'+esc(LE.name)+'" placeholder="例：陸運局A(柏)"></div><div class="row2"><div class="fld"><label>カテゴリ</label><select id="le-cat">'+catOpts+'</select></div><div class="fld"><label>方面（area）</label><input type="text" id="le-area" value="'+esc(LE.area||'')+'" placeholder="例：柏方面"></div></div><div class="fld"><label>住所</label><input type="text" id="le-addr" value="'+esc(LE.address||'')+'" placeholder="住所を入れるとマップで確認できます"><div style="margin-top:6px"><a href="#" onclick="openLocMap();return false;" style="font-size:12px;color:var(--carflow)">🗺 Googleマップで開く</a></div>'+(LE.address?'<iframe src="https://www.google.com/maps?q='+encodeURIComponent(LE.address)+'&z=15&output=embed" style="width:100%;height:180px;border:0;border-radius:8px;margin-top:8px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>':'')+'</div><div class="fld"><label>メモ</label><input type="text" id="le-memo" value="'+esc(LE.memo||'')+'"></div><div class="fld"><label class="toggle"><input type="checkbox" id="le-active" '+(LE.active!==false?'checked':'')+'> 有効</label></div>'; document.getElementById('loc-modal').classList.add('show'); }
+function openLocModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=locById(id);LE=s?JSON.parse(JSON.stringify(s)):null;if(!LE)return;}else{LE={id:null,name:'',category:'rikuun',area:'',address:'',memo:'',order:LOCS.length,active:true};} document.getElementById('lm-title').textContent=id?'場所を編集':'場所を追加'; document.getElementById('lm-del').style.display=id?'inline-block':'none'; var catOpts=LOC_CATS.map(function(e){return '<option value="'+e[0]+'"'+(LE.category===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); document.getElementById('lm-body').innerHTML=
+  '<div class="fld"><label>場所名 *</label><input type="text" id="le-name" value="'+esc(LE.name)+'" placeholder="例：野田陸運支局"></div>'+
+  '<div class="fld"><label>通称・呼び方（カンマ区切り）</label><input type="text" id="le-alias" value="'+esc((LE.aliases||[]).join(', '))+'" placeholder="例：のだりく, 野田の陸じ"><div style="font-size:11px;color:var(--text3);margin-top:4px">現場やAIとのやり取りで使う呼び方。複数OK（後でAIが照合します）。</div></div>'+
+  '<div class="row2"><div class="fld"><label>カテゴリ</label><select id="le-cat">'+catOpts+'</select></div><div class="fld"><label>方面（任意・配車まとめ用）</label><input type="text" id="le-area" value="'+esc(LE.area||'')+'" placeholder="例：柏方面"></div></div>'+
+  '<div class="fld"><label>住所（入力後フォーカスを外すと下に地図が出ます）</label><input type="text" id="le-addr" value="'+esc(LE.address||'')+'" placeholder="住所 or 場所名" onchange="locMapPreview()"><div style="margin-top:6px"><a href="#" onclick="openLocMap();return false;" style="font-size:12px;color:var(--carflow)">🗺 Googleマップを別タブで開く</a></div><iframe id="le-map-frame" style="width:100%;height:200px;border:0;border-radius:8px;margin-top:8px;display:none" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe></div>'+
+  '<div class="fld"><label>メモ</label><input type="text" id="le-memo" value="'+esc(LE.memo||'')+'"></div>'+
+  '<div class="fld"><label class="toggle"><input type="checkbox" id="le-active" '+(LE.active!==false?'checked':'')+'> 有効</label></div>';
+  document.getElementById('loc-modal').classList.add('show'); locMapPreview(); }
 function closeLocModal(){ document.getElementById('loc-modal').classList.remove('show'); }
-function saveLocForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('le-name').value||'').trim(); if(!name){alert('場所名を入力してください。');return;} LE.name=name; LE.category=document.getElementById('le-cat').value; LE.area=(document.getElementById('le-area').value||'').trim(); LE.address=(document.getElementById('le-addr').value||'').trim(); LE.memo=(document.getElementById('le-memo').value||'').trim(); LE.active=document.getElementById('le-active').checked; var data=Object.assign({},LE);var id=data.id;delete data.id; data.updatedAt=window.fb.serverTimestamp(); var ref=id?locCol().doc(id):locCol().doc(); ref.set(data,{merge:true}).then(function(){closeLocModal();toast('保存しました');}).catch(function(e){console.error(e);toast('⚠ 保存に失敗');}); }
+function saveLocForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('le-name').value||'').trim(); if(!name){alert('場所名を入力してください。');return;} LE.name=name; LE.aliases=_arr('le-alias'); LE.category=document.getElementById('le-cat').value; LE.area=(document.getElementById('le-area').value||'').trim(); LE.address=(document.getElementById('le-addr').value||'').trim(); LE.memo=(document.getElementById('le-memo').value||'').trim(); LE.active=document.getElementById('le-active').checked; var data=Object.assign({},LE);var id=data.id;delete data.id; data.updatedAt=window.fb.serverTimestamp(); var ref=id?locCol().doc(id):locCol().doc(); ref.set(data,{merge:true}).then(function(){closeLocModal();toast('保存しました');}).catch(function(e){console.error(e);toast('⚠ 保存に失敗');}); }
 function deleteLocCur(){ if(!IS_ADMIN||!LE||!LE.id)return; if(!confirm(LE.name+' を削除しますか？'))return; locCol().doc(LE.id).delete().then(function(){closeLocModal();toast('削除しました');}).catch(function(e){console.error(e);toast('⚠ 削除に失敗');}); }
 
 /* ---------- portalMembers 取り込み ---------- */
