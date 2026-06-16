@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.4.0">
+<meta name="app-version" content="0.4.1">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -178,7 +178,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.4.0</div>
+    <div class="ver">CoreMembers v0.4.1</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -193,7 +193,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.4.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.4.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -407,7 +407,12 @@ function deptById(id){ for(var i=0;i<DEPTS.length;i++)if(DEPTS[i].id===id)return
 function locById(id){ for(var i=0;i<LOCS.length;i++)if(LOCS[i].id===id)return LOCS[i]; return null; }
 function deptName(id){ var d=deptById(id); return d?d.name:''; }
 function deptColor(id){ var d=deptById(id); return (d&&d.color)||'#64748b'; }
-function avatarHTML(m,sz){ sz=sz||38; if(m&&m.photo)return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px"><img src="'+m.photo+'" alt=""></span>'; var bg=(m&&m.color)||'#ea580c'; return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.4)+'px">'+esc((m&&m.ini)||String((m&&m.name)||'？').charAt(0))+'</span>'; }
+function portalById(id){ for(var i=0;i<PORTAL.length;i++)if(PORTAL[i].id===id)return PORTAL[i]; return null; }
+/* 名前から決定的に色を生成（Google風アバター用） */
+function avatarColor(name){ var s=String(name||'？'),h=0; for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;} var pal=['#ea580c','#0d9488','#2563eb','#7c3aed','#db2777','#ca8a04','#16a34a','#dc2626','#0891b2','#9333ea','#65a30d','#e11d48']; return pal[h%pal.length]; }
+/* CoreFlow(portalMembers)に紐づくメンバーは“今の”Googleアバターを引く。それ以外は無し→苗字頭文字を生成 */
+function memberPhoto(m){ if(!m)return null; if(m.portalMemberId){ var p=portalById(m.portalMemberId); if(p&&(p.photo||p.photoURL))return p.photo||p.photoURL; } return m.photo||m.photoURL||null; }
+function avatarHTML(m,sz){ sz=sz||38; var ph=memberPhoto(m); if(ph)return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px"><img src="'+ph+'" alt=""></span>'; var nm=(m&&m.name)||''; var bg=avatarColor(nm||(m&&m.ini)||'？'); var ini=nm?String(nm).trim().charAt(0):((m&&m.ini)||'？'); return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.42)+'px">'+esc(ini)+'</span>'; }
 
 /* ---------- 画面切替 ---------- */
 let curView='members';
@@ -492,7 +497,7 @@ function renderMemberForm(){
   document.getElementById('mm-body').innerHTML=
     '<div class="sec-h">基本</div>'+
     '<div class="row2"><div class="fld"><label>氏名 *</label><input type="text" id="me-fullname" value="'+esc(ME.name)+'"'+dis+'></div><div class="fld"><label>カナ</label><input type="text" id="me-kana" value="'+esc(ME.kana||'')+'"'+dis+'></div></div>'+
-    '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>アイコン色</label><input type="text" id="me-color" value="'+esc(ME.color||'#ea580c')+'" placeholder="#ea580c"'+dis+'></div></div>'+
+    '<div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div>'+
     '<div class="sec-h">組織</div>'+
     '<div class="row2"><div class="fld"><label>所属（主）</label><select id="me-dept"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div></div>'+
     '<div class="fld"><label>兼務（複数可）</label><div class="seg-pick">'+(subChips||'<span style="font-size:11px;color:var(--text3)">部署未登録</span>')+'</div></div>'+
@@ -544,7 +549,6 @@ function saveMemberForm(){
   ME.name=name;
   ME.kana=(document.getElementById('me-kana').value||'').trim();
   ME.roleTitle=(document.getElementById('me-role').value||'').trim();
-  ME.color=(document.getElementById('me-color').value||'#ea580c').trim();
   ME.ini=name.charAt(0);
   ME.primaryDeptId=document.getElementById('me-dept').value||'';
   ME.managerId=document.getElementById('me-mgr').value||'';
