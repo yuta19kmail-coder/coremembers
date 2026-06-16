@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.6.1">
+<meta name="app-version" content="0.6.2">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -225,7 +225,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.6.1</div>
+    <div class="ver">CoreMembers v0.6.2</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -240,7 +240,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.6.1</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.6.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -360,7 +360,7 @@
 const COMPANY_ID='kobayashi_motors';
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function escA(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
-function toast(msg){var t=document.getElementById('cm-toast');t.textContent=msg;t.className='show';clearTimeout(toast._t);toast._t=setTimeout(function(){t.className='';},1700);}
+function toast(msg){var t=document.getElementById('cm-toast');if(!t){t=document.createElement('div');t.id='cm-toast';(document.body||document.documentElement).appendChild(t);}t.textContent=msg;t.className='show';clearTimeout(toast._t);toast._t=setTimeout(function(){t.className='';},1700);}
 function _normEmail(s){try{return String(s||'').normalize('NFKC').trim().toLowerCase();}catch(e){return String(s||'').trim().toLowerCase();}}
 function setSyncState(on){var el=document.getElementById('sync-ind');if(!el)return;el.classList.toggle('sync-offline',!on);var t=el.querySelector('.sync-text');if(t)t.textContent=on?'同期':'未接続';}
 try{window.addEventListener('online',function(){setSyncState(true);});window.addEventListener('offline',function(){setSyncState(false);});}catch(e){}
