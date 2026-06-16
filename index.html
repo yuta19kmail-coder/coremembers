@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.5.0">
+<meta name="app-version" content="0.6.0">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -93,6 +93,7 @@
   .mcard .grow{flex:1;min-width:0}
   .badge{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px}
   .b-emp{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+  .b-dept{background:rgba(29,185,122,.14);color:#34d399;border:1px solid rgba(29,185,122,.3)}
   .b-off{background:rgba(239,68,68,.14);color:#fca5a5}
   .b-star{background:rgba(245,158,11,.16);color:#fcd34d;border:1px solid rgba(245,158,11,.4)}
   .b-base{background:rgba(56,211,154,.14);color:#37d39a;border:1px solid rgba(56,211,154,.4)}
@@ -186,7 +187,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.5.0</div>
+    <div class="ver">CoreMembers v0.6.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -201,7 +202,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.5.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.6.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -418,6 +419,13 @@ function deptById(id){ for(var i=0;i<DEPTS.length;i++)if(DEPTS[i].id===id)return
 function locById(id){ for(var i=0;i<LOCS.length;i++)if(LOCS[i].id===id)return LOCS[i]; return null; }
 function deptName(id){ var d=deptById(id); return d?d.name:''; }
 function deptColor(id){ var d=deptById(id); return (d&&d.color)||'#64748b'; }
+// v0.6.0: 社員の所属を「部（最上位）」と「課（その下）」に解決して返す。
+//   旧データで主所属に課が入っていても、部＝親 / 課＝その課 に読み替える。
+function memberDeptIds(m){ var pid=(m&&m.primaryDeptId)||''; var sid=(m&&m.sectionDeptId)||''; var pd=deptById(pid); if(pd&&pd.parentId){ if(!sid)sid=pid; pid=pd.parentId; } return {deptId:pid, sectionId:sid}; }
+// 課セレクトの<option>群（指定した部の直下の部署だけ）
+function sectionOptionsHTML(parentId, sel){ var subs=DEPTS.filter(function(d){return d.parentId&&d.parentId===parentId;}); var o='<option value="">（課なし）</option>'; o+=subs.map(function(d){return '<option value="'+d.id+'"'+(sel===d.id?' selected':'')+'>'+esc(d.name)+'</option>';}).join(''); return o; }
+// 課セレクト本体（部未選択や直下に課が無ければ無効化）
+function sectionSelectHTML(){ var ro=!IS_ADMIN; var pid=ME.primaryDeptId||''; var hasSubs=DEPTS.some(function(d){return d.parentId===pid;}); var dis=(ro||!pid||!hasSubs)?' disabled':''; var ph=!pid?'<option value="">（先に部を選択）</option>':(!hasSubs?'<option value="">（この部に課なし）</option>':sectionOptionsHTML(pid,ME.sectionDeptId||'')); return '<select id="me-section"'+dis+'>'+ph+'</select>'; }
 function portalById(id){ for(var i=0;i<PORTAL.length;i++)if(PORTAL[i].id===id)return PORTAL[i]; return null; }
 /* 名前から決定的に色を生成（Google風アバター用） */
 function avatarColor(name){ var s=String(name||'？'),h=0; for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;} var pal=['#ea580c','#0d9488','#2563eb','#7c3aed','#db2777','#ca8a04','#16a34a','#dc2626','#0891b2','#9333ea','#65a30d','#e11d48']; return pal[h%pal.length]; }
@@ -450,7 +458,7 @@ function renderMembers(){
   var groups={}, order=[];
   DEPTS.forEach(function(d){ groups[d.id]=[]; order.push(d.id); });
   groups['_none']=[];
-  list.forEach(function(m){ var k=(m.primaryDeptId&&groups[m.primaryDeptId])?m.primaryDeptId:'_none'; groups[k].push(m); });
+  list.forEach(function(m){ var did=memberDeptIds(m).deptId; var k=(did&&groups[did])?did:'_none'; groups[k].push(m); });
   var h='';
   order.concat(['_none']).forEach(function(k){
     var ms=groups[k]; if(!ms||!ms.length)return;
@@ -469,22 +477,26 @@ function memberCardHTML(m){
   var noplan = (m.showInSchedule===false)?'<span class="badge b-noplan">予定非表示</span>':'';
   var topB = m.topRole?'<span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span>':'';
   var dr=[]; if(m.mt)dr.push('MT可'); if(m.licenses&&m.licenses.length)dr.push(m.licenses.slice(0,3).join('/'));
+  var secNm=memberDeptIds(m).sectionId?deptName(memberDeptIds(m).sectionId):''; var secB=secNm?'<span class="badge b-dept">🏢 '+esc(secNm)+'</span>':'';
   return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+avatarHTML(m,38).replace('mav','mav')+
     '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
-    '<div class="mmeta">'+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
+    '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
 }
 
 /* 社員モーダル */
 let ME=null;
 function openMemberModal(id){
   if(id){ var src=memberById(id); ME=src?JSON.parse(JSON.stringify(src)):null; if(!ME)return; }
-  else { if(!IS_ADMIN){toast('編集は管理者のみ');return;} ME={id:null,name:'',kana:'',color:'#ea580c',primaryDeptId:'',subDeptIds:[],roleTitle:'',managerId:'',employmentType:'fulltime',status:'active',joinedAt:'',weeklyDays:'',showInSchedule:true,schedulable:true,ext:'',mobile:'',emailWork:'',licenses:[],mt:false,drivableSizes:[],drivingConfidence:'',drivingNotes:'',goableLocationIds:[],homeArea:'',certs:[],skillTags:[],strengths:'',weaknesses:'',portalMemberId:''}; }
+  else { if(!IS_ADMIN){toast('編集は管理者のみ');return;} ME={id:null,name:'',kana:'',color:'#ea580c',primaryDeptId:'',sectionDeptId:'',subDeptIds:[],roleTitle:'',managerId:'',employmentType:'fulltime',status:'active',joinedAt:'',weeklyDays:'',showInSchedule:true,schedulable:true,ext:'',mobile:'',emailWork:'',licenses:[],mt:false,drivableSizes:[],drivingConfidence:'',drivingNotes:'',goableLocationIds:[],homeArea:'',certs:[],skillTags:[],strengths:'',weaknesses:'',portalMemberId:''}; }
   ['licenses','subDeptIds','drivableSizes','goableLocationIds','certs','skillTags','driveCaps','regTasks'].forEach(function(k){ if(!Array.isArray(ME[k]))ME[k]=[]; });
   if(!ME.locSkills||typeof ME.locSkills!=='object')ME.locSkills={};
   // 旧データ移行：locExperience{ok/never} → locSkills{status}
   if(ME.locExperience&&typeof ME.locExperience==='object'){ Object.keys(ME.locExperience).forEach(function(lid){ if(!ME.locSkills[lid])ME.locSkills[lid]={}; if(!ME.locSkills[lid].status)ME.locSkills[lid].status=ME.locExperience[lid]; }); }
   (ME.goableLocationIds||[]).forEach(function(lid){ if(!ME.locSkills[lid])ME.locSkills[lid]={}; if(!ME.locSkills[lid].status)ME.locSkills[lid].status='ok'; });   // 旧goable移行
   if(ME.nearOnly===undefined)ME.nearOnly=false;
+  if(ME.sectionDeptId===undefined)ME.sectionDeptId='';
+  // v0.6.0: 旧データ正規化＝主所属に「課（親を持つ部署）」が入っていたら、部＝親 / 課＝その課 に振り直す。
+  (function(){ var pd=deptById(ME.primaryDeptId); if(pd&&pd.parentId){ if(!ME.sectionDeptId)ME.sectionDeptId=ME.primaryDeptId; ME.primaryDeptId=pd.parentId; } })();
   document.getElementById('mm-title').textContent=id?'社員を編集':'新規社員';
   document.getElementById('mm-del').style.display=(id&&IS_ADMIN)?'inline-block':'none';
   renderMemberForm();
@@ -494,7 +506,8 @@ function closeMemberModal(){ document.getElementById('member-modal').classList.r
 function pickH(group,val,label,on){ return '<span class="pick'+(on?' on':'')+'" onclick="mePick(\''+group+'\',\''+escA(val)+'\',this)">'+esc(label)+'</span>'; }
 function renderMemberForm(){
   var ro=!IS_ADMIN;
-  var deptOpts='<option value="">（未所属）</option>'+DEPTS.map(function(d){return '<option value="'+d.id+'"'+(ME.primaryDeptId===d.id?' selected':'')+'>'+esc(d.name)+'</option>';}).join('');
+  // v0.6.0: 所属（部）は最上位の部署（親を持たない）だけ。課はその下から別途選ぶ。
+  var deptOpts='<option value="">（未所属）</option>'+DEPTS.filter(function(d){return !d.parentId;}).map(function(d){return '<option value="'+d.id+'"'+(ME.primaryDeptId===d.id?' selected':'')+'>'+esc(d.name)+'</option>';}).join('');
   var mgrOpts='<option value="">（なし）</option>'+MEMBERS.filter(function(x){return x.id!==ME.id;}).map(function(x){return '<option value="'+x.id+'"'+(ME.managerId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
   var empOpts=EMP_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(ME.employmentType===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
   var stOpts=STATUSES.map(function(e){return '<option value="'+e[0]+'"'+((ME.status||'active')===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
@@ -511,7 +524,8 @@ function renderMemberForm(){
     '<div class="row2"><div class="fld"><label>氏名 *</label><input type="text" id="me-fullname" value="'+esc(ME.name)+'"'+dis+'></div><div class="fld"><label>カナ</label><input type="text" id="me-kana" value="'+esc(ME.kana||'')+'"'+dis+'></div></div>'+
     '<div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div>'+
     '<div class="sec-h">組織</div>'+
-    '<div class="row2"><div class="fld"><label>所属（主）</label><select id="me-dept"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div></div>'+
+    '<div class="row2"><div class="fld"><label>所属（部）</label><select id="me-dept" onchange="meDeptChange()"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>課（その部の下・任意）</label><span id="me-section-wrap">'+sectionSelectHTML()+'</span></div></div>'+
+    '<div class="row2"><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div><div class="fld"><label>　</label><div style="font-size:11px;color:var(--text3);padding-top:8px">部を選ぶと、その下の課が選べます。部だけでもOK。</div></div></div>'+
     '<div class="fld"><label>兼務（複数可）</label><div class="seg-pick">'+(subChips||'<span style="font-size:11px;color:var(--text3)">部署未登録</span>')+'</div></div>'+
     '<div class="fld"><label>上位役割（部より上・任意）</label><select id="me-toprole"'+dis+'><option value="">（なし）</option>'+TOP_ROLES.map(function(r){return '<option value="'+r[0]+'"'+(ME.topRole===r[0]?' selected':'')+'>'+r[1]+'</option>';}).join('')+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">代表・役員など。設定すると組織図の最上部に役割として表示（現場の部署とは別。兼任OK）。</div></div>'+
     '<div class="sec-h">雇用</div>'+
@@ -536,6 +550,8 @@ function renderMemberForm(){
     '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">ログインさせる人だけ紐づけ。週2バイト等は「なし」でOK。</div></div>'+
     (ro?'<div style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</div>':'');
 }
+// v0.6.0: 部を変えたら、課セレクトを「その部の下」に作り直す（部に合わない課はクリア）。
+function meDeptChange(){ ME.primaryDeptId=(document.getElementById('me-dept')||{}).value||''; var sd=deptById(ME.sectionDeptId||''); if(!ME.sectionDeptId||!sd||sd.parentId!==ME.primaryDeptId)ME.sectionDeptId=''; var wrap=document.getElementById('me-section-wrap'); if(wrap)wrap.innerHTML=sectionSelectHTML(); }
 function mePick(group,val,el){
   var map={lic:'licenses',size:'drivableSizes',sub:'subDeptIds',drv:'driveCaps',reg:'regTasks'};
   var key=map[group]; if(!key)return; var a=ME[key]||(ME[key]=[]); var i=a.indexOf(val); if(i>=0)a.splice(i,1); else a.push(val); el.classList.toggle('on');
@@ -564,6 +580,7 @@ function saveMemberForm(){
   ME.roleTitle=(document.getElementById('me-role').value||'').trim();
   ME.ini=name.charAt(0);
   ME.primaryDeptId=document.getElementById('me-dept').value||'';
+  { var _se=document.getElementById('me-section'); ME.sectionDeptId=(_se&&_se.value)||''; }
   ME.managerId=document.getElementById('me-mgr').value||'';
   ME.topRole=document.getElementById('me-toprole').value||'';
   ME.employmentType=document.getElementById('me-emp').value||'fulltime';
