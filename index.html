@@ -110,23 +110,32 @@
   .sk-tabs{display:flex;gap:6px;flex-wrap:wrap}
   .sk-tab{font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text2);cursor:pointer}
   .sk-tab.on{background:var(--bg3);color:var(--text);border-color:var(--acc)}
-  .sk-wrap{overflow:auto;max-height:72vh;border:1px solid var(--border);border-radius:10px}
-  .skmx{border-collapse:separate;border-spacing:0;font-size:12px;white-space:nowrap}
+  .sk-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--bg2)}
+  .sk-bar.editing{border-color:var(--acc);background:rgba(29,185,122,.08)}
+  .sk-bar .spacer{flex:1}
+  .sk-editing{font-size:13px;font-weight:700;color:#34d399}
+  .sk-wrap{overflow:auto;max-height:74vh;border:1px solid var(--border);border-radius:10px}
+  .skmx{border-collapse:separate;border-spacing:0;font-size:13.5px;white-space:nowrap}
   .skmx th,.skmx td{border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
-  .skmx thead th{position:sticky;top:0;background:var(--bg2);z-index:2;padding:5px 7px;font-weight:700;color:var(--text2)}
-  .skmx thead .sk-loc{background:var(--bg3);color:var(--text)}
-  .skmx .sk-name{position:sticky;left:0;background:var(--bg2);z-index:1;text-align:left;padding:5px 9px;min-width:104px;color:var(--text)}
+  .skmx thead th{position:sticky;top:0;background:var(--bg2);z-index:2;padding:8px 10px;font-weight:700;color:var(--text2);font-size:13px}
+  .skmx thead .sk-loc{background:var(--bg3);color:var(--text);font-size:13.5px}
+  .skmx .sk-name{position:sticky;left:0;background:var(--bg2);z-index:1;text-align:left;padding:6px 11px;min-width:170px;color:var(--text)}
   .skmx thead .sk-name,.skmx .sk-corner{z-index:3}
+  .sk-nmwrap{display:flex;align-items:center;gap:9px}
+  .sk-nm{font-size:14px;font-weight:600}
   .skmx td{text-align:center;padding:0}
   .skmx .sk-col2{background:var(--bg2)}
-  .skmx .sk-tdwide{padding:2px 5px}
-  .skmini{font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--text)}
-  .skmemo{font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg3);color:var(--text);width:150px}
-  .skcell{display:inline-flex;align-items:center;justify-content:center;width:30px;height:26px;cursor:pointer;color:#34d399;font-weight:800;font-size:13px}
-  .skcell.on{background:rgba(29,185,122,.18)}
-  .lcell{display:inline-flex;align-items:center;justify-content:center;width:36px;height:26px;cursor:pointer;color:var(--text3);font-size:13px}
-  .lcell.on-ok{background:rgba(29,185,122,.18)}
-  .lcell.on-never{background:rgba(252,211,77,.18)}
+  .skmx .sk-tdwide{padding:3px 6px}
+  .skmini{font-size:13px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text)}
+  .skmemo{font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text);width:170px}
+  .skcell{display:inline-flex;align-items:center;justify-content:center;width:40px;height:34px;color:#34d399;font-weight:800;font-size:16px}
+  .skcell.editable{cursor:pointer}
+  .skcell.editable:hover{background:rgba(29,185,122,.12)}
+  .skcell.on{background:rgba(29,185,122,.20)}
+  .lcell{display:inline-flex;align-items:center;justify-content:center;width:46px;height:34px;color:var(--text3);font-size:16px}
+  .lcell.editable{cursor:pointer}
+  .lcell.on-ok{background:rgba(29,185,122,.20)}
+  .lcell.on-never{background:rgba(252,211,77,.20)}
   .skde{margin:2px 0 6px;border:1px solid var(--border);border-radius:8px;background:var(--bg2)}
   .skde>summary{cursor:pointer;padding:8px 10px;font-size:12.5px;color:var(--text2);user-select:none}
   .skde-body{padding:2px 10px 10px}
@@ -664,49 +673,71 @@ function deleteMemberCur(){ if(!IS_ADMIN||!ME||!ME.id)return; if(!confirm(ME.nam
 
 /* ---------- スキル管理（社員×項目のマトリクス編集・v0.6.0） ---------- */
 let skillTab='drive';
+let SKILL_EDIT=false;          // 編集モード（「編集する」で入る）
+let EBUF={};                   // 編集中の作業コピー（保存するまで本体に反映しない）
+let EDIRTY={};                 // 変更があった社員id
 function saveMemberField(id, patch){ patch.updatedAt=window.fb.serverTimestamp(); patch.updatedBy=(window.fb.currentUser&&window.fb.currentUser.uid)||null; return memCol().doc(id).set(patch,{merge:true}); }
 function skillMembersList(){ return MEMBERS.filter(function(m){return m.status!=='left';}); }
 function setSkillTab(t){ skillTab=t; renderSkills(); }
+// 編集中は作業コピー(EBUF)を、閲覧中は本体(MEMBERS)を読む
+function skillSrc(m){ return (SKILL_EDIT && EBUF[m.id]) ? EBUF[m.id] : m; }
+function skillEnterEdit(){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} EBUF={}; EDIRTY={}; skillMembersList().forEach(function(m){ EBUF[m.id]=JSON.parse(JSON.stringify({driveCaps:m.driveCaps||[],regTasks:m.regTasks||[],mt:!!m.mt,canLeft:!!m.canLeft,canLeftMt:!!m.canLeftMt,canLowCar:!!m.canLowCar,nearOnly:!!m.nearOnly,drivingConfidence:m.drivingConfidence||'',drivingNotes:m.drivingNotes||'',locSkills:m.locSkills||{}})); }); SKILL_EDIT=true; renderSkills(); }
+function skillCancelEdit(){ SKILL_EDIT=false; EBUF={}; EDIRTY={}; renderSkills(); toast('編集をやめました'); }
+async function skillSaveEdit(){ if(!IS_ADMIN)return; var ids=Object.keys(EDIRTY); if(!ids.length){ SKILL_EDIT=false; EBUF={}; renderSkills(); toast('変更はありませんでした'); return; }
+  toast('保存中…'); var ok=0;
+  for(var i=0;i<ids.length;i++){ var id=ids[i]; var b=EBUF[id]; if(!b)continue;
+    var goable=Object.keys(b.locSkills||{}).filter(function(k){return b.locSkills[k].status==='ok';});
+    var patch={driveCaps:b.driveCaps,regTasks:b.regTasks,mt:b.mt,canLeft:b.canLeft,canLeftMt:b.canLeftMt,canLowCar:b.canLowCar,nearOnly:b.nearOnly,drivingConfidence:b.drivingConfidence,drivingNotes:b.drivingNotes,locSkills:b.locSkills,goableLocationIds:goable};
+    try{ await saveMemberField(id,patch); var mm=memberById(id); if(mm)Object.assign(mm,patch); ok++; }catch(e){ console.error(e); }
+  }
+  SKILL_EDIT=false; EBUF={}; EDIRTY={}; renderSkills(); toast(ok+'人分を保存しました');
+}
 function renderSkills(){
-  var tabs=[['drive','🚗 乗れる車'],['special','🛠 特殊運転'],['license','🪪 免許'],['reg','📝 登録業務'],['loc','📍 場所×業務']];
+  var tabs=[['drive','🚗 乗れる車'],['special','🛠 特殊運転'],['reg','📝 登録業務'],['loc','📍 場所×業務']];
   var tb=document.getElementById('skills-tabs'); if(tb)tb.innerHTML=tabs.map(function(t){return '<button class="sk-tab'+(skillTab===t[0]?' on':'')+'" onclick="setSkillTab(\''+t[0]+'\')">'+t[1]+'</button>';}).join('');
   var body=document.getElementById('skills-body'); if(!body)return;
   if(!skillMembersList().length){ body.innerHTML='<div class="empty">社員が未登録です。</div>'; return; }
+  var bar='';
+  if(IS_ADMIN){ bar = SKILL_EDIT
+    ? '<div class="sk-bar editing"><span class="sk-editing">✏️ 編集中：セルをクリックで切替</span><div class="spacer"></div><button class="btn-ghost" onclick="skillCancelEdit()">キャンセル</button><button class="btn-save" onclick="skillSaveEdit()">💾 保存して終了</button></div>'
+    : '<div class="sk-bar"><span style="font-size:12px;color:var(--text3)">閲覧中（編集するとセルを変更できます）</span><div class="spacer"></div><button class="btn-save" onclick="skillEnterEdit()">✏️ 編集する</button></div>'; }
   var html='';
   if(skillTab==='drive'){ html=DRIVE_SKILLS.length?skillMatrixSimple('driveCaps',DRIVE_SKILLS,[],driveExtraCols()):'<div class="empty">「乗れる車」の項目が未設定です。⚙️設定で追加してください。</div>'; }
   else if(skillTab==='special'){ html=skillMatrixSimple('_nonexistent',[],SPECIAL_DRIVE); }
-  else if(skillTab==='license'){ html=skillMatrixSimple('licenses',LICENSES.map(function(x){return [x,x];}),[]); }
   else if(skillTab==='reg'){ html=skillMatrixSimple('regTasks',REG_TASKS.map(function(x){return [x,x];}),[]); }
   else { html=skillMatrixLoc(); }
-  body.innerHTML='<div class="sk-wrap">'+html+'</div>'+(IS_ADMIN?'':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>');
+  body.innerHTML=bar+'<div class="sk-wrap">'+html+'</div>'+(IS_ADMIN?'':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>');
 }
+function skNameCell(m){ return '<th class="sk-name"><span class="sk-nmwrap">'+avatarHTML(m,26)+'<span class="sk-nm">'+esc(m.name||'(無名)')+'</span></span></th>'; }
 function skillMatrixSimple(field, items, boolCols, extraCols){
   boolCols=boolCols||[]; extraCols=extraCols||[];
   var head=items.map(function(it){return '<th class="sk-col">'+esc(it[1])+'</th>';}).join('')
     +boolCols.map(function(b){return '<th class="sk-col">'+esc(b[1])+'</th>';}).join('')
     +extraCols.map(function(ec){return '<th class="sk-col2">'+esc(ec.label)+'</th>';}).join('');
   var rows=skillMembersList().map(function(m){
-    var c1=items.map(function(it){ var on=(m[field]||[]).indexOf(it[0])>=0; return '<td>'+skCellArr(m.id,field,it[0],on)+'</td>'; }).join('');
-    var c2=boolCols.map(function(b){ var on=!!m[b[0]]; return '<td>'+skCellBool(m.id,b[0],on)+'</td>'; }).join('');
-    var c3=extraCols.map(function(ec){ return '<td class="sk-tdwide">'+ec.cell(m)+'</td>'; }).join('');
-    return '<tr><th class="sk-name">'+esc(m.name)+'</th>'+c1+c2+c3+'</tr>';
+    var src=skillSrc(m);
+    var c1=items.map(function(it){ var on=(src[field]||[]).indexOf(it[0])>=0; return '<td>'+skCellArr(m.id,field,it[0],on)+'</td>'; }).join('');
+    var c2=boolCols.map(function(b){ var on=!!src[b[0]]; return '<td>'+skCellBool(m.id,b[0],on)+'</td>'; }).join('');
+    var c3=extraCols.map(function(ec){ return '<td class="sk-tdwide">'+ec.cell(m,src)+'</td>'; }).join('');
+    return '<tr>'+skNameCell(m)+c1+c2+c3+'</tr>';
   }).join('');
   return '<table class="skmx"><thead><tr><th class="sk-name sk-corner">社員</th>'+head+'</tr></thead><tbody>'+rows+'</tbody></table>';
 }
-// 汎用：スカラー値（select/textの確定）を保存
-function skillSetField(id,field,value){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; m[field]=value; var patch={}; patch[field]=value; saveMemberField(id,patch).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
+function _edAttr(handler){ return (IS_ADMIN&&SKILL_EDIT)?(' onclick="'+handler+'"'):''; }
 // 乗れる車タブの右に付ける運転の付帯項目（得意度・近場のみ・メモ）
 function driveExtraCols(){
+  var dis=(IS_ADMIN&&SKILL_EDIT)?'':' disabled';
   return [
-    { label:'得意度', cell:function(m){ var v=String(m.drivingConfidence||''); var o='<option value="">—</option>'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(v===String(n)?' selected':'')+'>'+n+'</option>';}).join(''); return '<select class="skmini"'+(IS_ADMIN?' onchange="skillSetField(\''+escA(m.id)+'\',\'drivingConfidence\',this.value)"':' disabled')+'>'+o+'</select>'; } },
-    { label:'近場のみ', cell:function(m){ return skCellBool(m.id,'nearOnly',!!m.nearOnly); } },
-    { label:'運転メモ', cell:function(m){ return '<input type="text" class="skmemo" value="'+esc(m.drivingNotes||'')+'" placeholder="例：高速苦手"'+(IS_ADMIN?' onchange="skillSetField(\''+escA(m.id)+'\',\'drivingNotes\',this.value)"':' disabled')+'>'; } }
+    { label:'得意度', cell:function(m,src){ var v=String(src.drivingConfidence||''); var o='<option value="">—</option>'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(v===String(n)?' selected':'')+'>'+n+'</option>';}).join(''); return '<select class="skmini"'+dis+' onchange="skillSetField(\''+escA(m.id)+'\',\'drivingConfidence\',this.value)">'+o+'</select>'; } },
+    { label:'近場のみ', cell:function(m,src){ return skCellBool(m.id,'nearOnly',!!src.nearOnly); } },
+    { label:'運転メモ', cell:function(m,src){ return '<input type="text" class="skmemo" value="'+esc(src.drivingNotes||'')+'" placeholder="例：高速苦手"'+dis+' onchange="skillSetField(\''+escA(m.id)+'\',\'drivingNotes\',this.value)">'; } }
   ];
 }
-function skCellArr(id,field,key,on){ return '<span class="skcell'+(on?' on':'')+'"'+(IS_ADMIN?' onclick="skillToggleArr(\''+escA(id)+'\',\''+escA(field)+'\',\''+escA(key)+'\',this)"':'')+'>'+(on?'✓':'')+'</span>'; }
-function skCellBool(id,field,on){ return '<span class="skcell'+(on?' on':'')+'"'+(IS_ADMIN?' onclick="skillToggleBool(\''+escA(id)+'\',\''+escA(field)+'\',this)"':'')+'>'+(on?'✓':'')+'</span>'; }
-function skillToggleArr(id,field,key,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; if(!Array.isArray(m[field]))m[field]=[]; var i=m[field].indexOf(key); if(i>=0)m[field].splice(i,1); else m[field].push(key); var on=i<0; el.classList.toggle('on',on); el.textContent=on?'✓':''; var patch={}; patch[field]=m[field].slice(); saveMemberField(id,patch).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
-function skillToggleBool(id,field,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; m[field]=!m[field]; el.classList.toggle('on',!!m[field]); el.textContent=m[field]?'✓':''; var patch={}; patch[field]=!!m[field]; saveMemberField(id,patch).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
+function skCellArr(id,field,key,on){ return '<span class="skcell'+(on?' on':'')+(IS_ADMIN&&SKILL_EDIT?' editable':'')+'"'+_edAttr('skillToggleArr(\''+escA(id)+'\',\''+escA(field)+'\',\''+escA(key)+'\',this)')+'>'+(on?'✓':'')+'</span>'; }
+function skCellBool(id,field,on){ return '<span class="skcell'+(on?' on':'')+(IS_ADMIN&&SKILL_EDIT?' editable':'')+'"'+_edAttr('skillToggleBool(\''+escA(id)+'\',\''+escA(field)+'\',this)')+'>'+(on?'✓':'')+'</span>'; }
+function skillToggleArr(id,field,key,el){ if(!SKILL_EDIT||!IS_ADMIN)return; var src=skillSrc(memberById(id)); if(!Array.isArray(src[field]))src[field]=[]; var i=src[field].indexOf(key); if(i>=0)src[field].splice(i,1); else src[field].push(key); var on=i<0; el.classList.toggle('on',on); el.textContent=on?'✓':''; EDIRTY[id]=true; }
+function skillToggleBool(id,field,el){ if(!SKILL_EDIT||!IS_ADMIN)return; var src=skillSrc(memberById(id)); src[field]=!src[field]; el.classList.toggle('on',!!src[field]); el.textContent=src[field]?'✓':''; EDIRTY[id]=true; }
+function skillSetField(id,field,value){ if(!SKILL_EDIT||!IS_ADMIN)return; var src=skillSrc(memberById(id)); if(!src)return; src[field]=value; EDIRTY[id]=true; }
 function skillMatrixLoc(){
   var locs=LOCS.filter(function(l){return l.active!==false;});
   if(!locs.length)return '<div class="empty">場所マスターが未登録です（📍場所マスターで追加）。</div>';
@@ -714,27 +745,25 @@ function skillMatrixLoc(){
   locs.forEach(function(l){ var tks=l.tasks||[]; top+='<th class="sk-loc" colspan="'+(1+tks.length)+'">'+esc(l.name)+'</th>'; sub+='<th class="sk-col sk-status">行ける</th>'+tks.map(function(t){return '<th class="sk-col">'+esc(t)+'</th>';}).join(''); });
   top+='</tr>'; sub+='</tr>';
   var rows=skillMembersList().map(function(m){
-    var sk=m.locSkills||{};
+    var sk=skillSrc(m).locSkills||{};
     var cells=locs.map(function(l){ var s=sk[l.id]||{}; var taskCells=(l.tasks||[]).map(function(t){ var on=(s.tasks||[]).indexOf(t)>=0; return '<td>'+skLocTaskCell(m.id,l.id,t,on)+'</td>'; }).join(''); return '<td>'+skLocStatusCell(m.id,l.id,s.status)+'</td>'+taskCells; }).join('');
-    return '<tr><th class="sk-name">'+esc(m.name)+'</th>'+cells+'</tr>';
+    return '<tr>'+skNameCell(m)+cells+'</tr>';
   }).join('');
   return '<table class="skmx"><thead>'+top+sub+'</thead><tbody>'+rows+'</tbody></table>';
 }
-function skLocStatusCell(id,locId,st){ var cls=st==='ok'?' on-ok':(st==='never'?' on-never':''); var t=st==='ok'?'✅':(st==='never'?'🔶':'・'); return '<span class="lcell'+cls+'"'+(IS_ADMIN?' onclick="skillLocCycle(\''+escA(id)+'\',\''+escA(locId)+'\',this)"':'')+'>'+t+'</span>'; }
-function skLocTaskCell(id,locId,task,on){ return '<span class="skcell'+(on?' on':'')+'"'+(IS_ADMIN?' onclick="skillLocTask(\''+escA(id)+'\',\''+escA(locId)+'\',\''+escA(task)+'\',this)"':'')+'>'+(on?'✓':'')+'</span>'; }
-function skillLocCycle(id,locId,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; if(!m.locSkills)m.locSkills={}; var sk=m.locSkills[locId]||(m.locSkills[locId]={}); var s=sk.status; var n=(!s)?'ok':(s==='ok'?'never':null); if(n)sk.status=n; else { delete sk.status; if(!(sk.tasks&&sk.tasks.length))delete m.locSkills[locId]; } el.className='lcell'+(n==='ok'?' on-ok':(n==='never'?' on-never':'')); el.textContent=n==='ok'?'✅':(n==='never'?'🔶':'・'); var goable=Object.keys(m.locSkills).filter(function(k){return m.locSkills[k].status==='ok';}); m.goableLocationIds=goable; saveMemberField(id,{locSkills:m.locSkills,goableLocationIds:goable}).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
-function skillLocTask(id,locId,task,el){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var m=memberById(id); if(!m)return; if(!m.locSkills)m.locSkills={}; var sk=m.locSkills[locId]||(m.locSkills[locId]={}); if(!sk.tasks)sk.tasks=[]; var i=sk.tasks.indexOf(task); if(i>=0)sk.tasks.splice(i,1); else sk.tasks.push(task); el.classList.toggle('on',i<0); el.textContent=i<0?'✓':''; saveMemberField(id,{locSkills:m.locSkills}).catch(function(e){console.error(e);toast('⚠ 保存失敗');}); }
+function skLocStatusCell(id,locId,st){ var cls=st==='ok'?' on-ok':(st==='never'?' on-never':''); var t=st==='ok'?'✅':(st==='never'?'🔶':'・'); return '<span class="lcell'+cls+(IS_ADMIN&&SKILL_EDIT?' editable':'')+'"'+_edAttr('skillLocCycle(\''+escA(id)+'\',\''+escA(locId)+'\',this)')+'>'+t+'</span>'; }
+function skLocTaskCell(id,locId,task,on){ return '<span class="skcell'+(on?' on':'')+(IS_ADMIN&&SKILL_EDIT?' editable':'')+'"'+_edAttr('skillLocTask(\''+escA(id)+'\',\''+escA(locId)+'\',\''+escA(task)+'\',this)')+'>'+(on?'✓':'')+'</span>'; }
+function skillLocCycle(id,locId,el){ if(!SKILL_EDIT||!IS_ADMIN)return; var src=skillSrc(memberById(id)); if(!src.locSkills)src.locSkills={}; var sk=src.locSkills[locId]||(src.locSkills[locId]={}); var s=sk.status; var n=(!s)?'ok':(s==='ok'?'never':null); if(n)sk.status=n; else { delete sk.status; if(!(sk.tasks&&sk.tasks.length))delete src.locSkills[locId]; } el.className='lcell'+(n==='ok'?' on-ok':(n==='never'?' on-never':''))+' editable'; el.textContent=n==='ok'?'✅':(n==='never'?'🔶':'・'); EDIRTY[id]=true; }
+function skillLocTask(id,locId,task,el){ if(!SKILL_EDIT||!IS_ADMIN)return; var src=skillSrc(memberById(id)); if(!src.locSkills)src.locSkills={}; var sk=src.locSkills[locId]||(src.locSkills[locId]={}); if(!sk.tasks)sk.tasks=[]; var i=sk.tasks.indexOf(task); if(i>=0)sk.tasks.splice(i,1); else sk.tasks.push(task); el.classList.toggle('on',i<0); el.textContent=i<0?'✓':''; EDIRTY[id]=true; }
 // 社員詳細用：能力サマリー（読み取り専用・展開で表示）
 function memberSkillSummaryHTML(m){
   function chips(arr){ return arr.length?arr.map(function(x){return '<span class="sumchip">'+esc(x)+'</span>';}).join(''):'<span class="summute">—</span>'; }
   var drive=(m.driveCaps||[]).map(driveSkillLabel).filter(Boolean);
   var spec=SPECIAL_DRIVE.filter(function(s){return !!m[s[0]];}).map(function(s){return s[1];});
-  var lic=(m.licenses||[]).slice();
   var reg=(m.regTasks||[]).slice();
   var locs=Object.keys(m.locSkills||{}).map(function(lid){ var s=m.locSkills[lid]||{}; var nm=locName(lid); if(!nm)return ''; var mark=s.status==='ok'?'✅':(s.status==='never'?'🔶':''); var tk=(s.tasks||[]).length?'（'+s.tasks.join('・')+'）':''; return mark+nm+tk; }).filter(Boolean);
   return '<div class="sumrow"><span class="sumlbl">🚗 乗れる車</span>'+chips(drive)+'</div>'+
     '<div class="sumrow"><span class="sumlbl">🛠 特殊運転</span>'+chips(spec)+'</div>'+
-    '<div class="sumrow"><span class="sumlbl">🪪 免許</span>'+chips(lic)+'</div>'+
     '<div class="sumrow"><span class="sumlbl">📝 登録業務</span>'+chips(reg)+'</div>'+
     '<div class="sumrow"><span class="sumlbl">📍 場所×業務</span>'+chips(locs)+'</div>'+
     '<div class="sumrow"><span class="sumlbl">🧭 運転補足</span>'+chips([(m.drivingConfidence?'得意度'+m.drivingConfidence+'/5':''),(m.nearOnly?'近場のみ':''),(m.drivingNotes?'メモ：'+m.drivingNotes:'')].filter(Boolean))+'</div>';
