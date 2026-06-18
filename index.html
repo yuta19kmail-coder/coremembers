@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.7.7">
+<meta name="app-version" content="0.7.8">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.7.7</div>
+    <div class="ver">CoreMembers v0.7.8</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.7</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.8</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -408,7 +408,7 @@ async function enterApp(member,user){
   var _cm=(member&&member.coremembers)||{};
   CM_ROLE=(member&&(member.master||member.admin))?'オーナー':(_cm.on&&_cm.role?_cm.role:'一般');
   IS_ADMIN=(CM_ROLE==='オーナー'||CM_ROLE==='管理者');   // マスターデータ編集可
-  document.getElementById('me-name').textContent=(member&&dispNm(member))||user.displayName||user.email||'ユーザー';
+  document.getElementById('me-name').textContent=(member&&member.name)||user.displayName||user.email||'ユーザー';
   var rc=document.getElementById('cm-role'); if(rc)rc.textContent=CM_ROLE;
   var av=document.getElementById('u-av'); var ph=member&&(member.photo||member.photoURL); av.innerHTML=ph?('<img src="'+ph+'" alt="">'):esc((member&&member.ini)||String((member&&member.name)||'？').charAt(0));
   if(!IS_ADMIN){ ['btn-new','btn-seed'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display='none';}); }
@@ -636,7 +636,7 @@ function memberCardHTML(m, reorderScope, hideSection){
   var secNm=(!hideSection&&memberDeptIds(m).sectionId)?deptName(memberDeptIds(m).sectionId):''; var secB=secNm?'<span class="badge b-dept">🏢 '+esc(secNm)+'</span>':'';
   var ord=(reorderScope!==undefined)?reorderBtns(m.id,-1,reorderScope):'';
   return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avatarHTML(m,38)+
-    '<div class="grow"><div class="mn">'+esc(dispNm(m)||'(名称未設定)')+(m.dispName?'<span class="mk">'+esc(m.name)+'</span>':(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':''))+topB+statusBadge+'</div>'+
+    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.dispName?'<span class="mk">通称:'+esc(m.dispName)+'</span>':'')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
     '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
 }
 
@@ -665,7 +665,7 @@ function renderMemberForm(){
   var ro=!IS_ADMIN;
   // v0.6.0: 所属（部）は最上位の部署（親を持たない）だけ。課はその下から別途選ぶ。
   var deptOpts='<option value="">（未所属）</option>'+DEPTS.filter(function(d){return !d.parentId;}).map(function(d){return '<option value="'+d.id+'"'+(ME.primaryDeptId===d.id?' selected':'')+'>'+esc(d.name)+'</option>';}).join('');
-  var mgrOpts='<option value="">（なし）</option>'+MEMBERS.filter(function(x){return x.id!==ME.id;}).map(function(x){return '<option value="'+x.id+'"'+(ME.managerId===x.id?' selected':'')+'>'+esc(dispNm(x))+'</option>';}).join('');
+  var mgrOpts='<option value="">（なし）</option>'+MEMBERS.filter(function(x){return x.id!==ME.id;}).map(function(x){return '<option value="'+x.id+'"'+(ME.managerId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
   var empOpts=EMP_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(ME.employmentType===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
   var stOpts=STATUSES.map(function(e){return '<option value="'+e[0]+'"'+((ME.status||'active')===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
   var confOpts='<option value="">—</option>'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(String(ME.drivingConfidence)===String(n)?' selected':'')+'>'+n+'</option>';}).join('');
@@ -813,7 +813,7 @@ function renderSkills(){
   else { html=skillMatrixLoc(); }
   body.innerHTML=bar+'<div class="sk-wrap">'+html+'</div>'+(IS_ADMIN?'':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>');
 }
-function skNameCell(m){ return '<th class="sk-name"><span class="sk-nmwrap">'+avatarHTML(m,26)+'<span class="sk-nm">'+esc(dispNm(m)||'(無名)')+'</span></span></th>'; }
+function skNameCell(m){ return '<th class="sk-name"><span class="sk-nmwrap">'+avatarHTML(m,26)+'<span class="sk-nm">'+esc(m.name||'(無名)')+'</span></span></th>'; }
 function skillMatrixSimple(field, items, boolCols, extraCols){
   boolCols=boolCols||[]; extraCols=extraCols||[];
   var head=items.map(function(it){return '<th class="sk-col">'+esc(it[1])+'</th>';}).join('')
@@ -886,7 +886,7 @@ function execStripHTML(){
     var sub=(m.subDeptIds||[]).map(function(id){var d=deptById(id);return d?d.name:'';}).filter(Boolean);
     var where=[]; if(dept)where.push(dept.name+(m.roleTitle?'／'+m.roleTitle:'')); else if(m.roleTitle)where.push(m.roleTitle); if(sub.length)where.push('兼務：'+sub.join('・'));
     return '<div class="execcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+avatarHTML(m,40)
-      +'<div class="grow"><div class="lt">'+esc(dispNm(m))+' <span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span></div>'
+      +'<div class="grow"><div class="lt">'+esc(m.name)+' <span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span></div>'
       +'<div class="ls">'+(where.length?esc(where.join('・')):'（現場の所属なし）')+'</div></div></div>';
   }).join('');
   return '<div class="execstrip"><div class="execlabel">上位役割</div><div class="execrow">'+cards+'</div></div>';
