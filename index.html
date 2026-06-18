@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.8.0">
+<meta name="app-version" content="0.8.1">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.8.0</div>
+    <div class="ver">CoreMembers v0.8.1</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.8.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.8.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -761,7 +761,10 @@ function saveMemberForm(){
   var ref=id?memCol().doc(id):memCol().doc();
   ref.set(data,{merge:true}).then(function(){ closeMemberModal(); toast('保存しました'); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
 }
-function deleteMemberCur(){ if(!IS_ADMIN||!ME||!ME.id)return; if(!confirm(ME.name+' を名簿から削除しますか？'))return; memCol().doc(ME.id).delete().then(function(){ closeMemberModal(); toast('削除しました'); }).catch(function(e){ console.error(e); toast('⚠ 削除に失敗'); }); }
+function deleteMemberCur(){ if(!IS_ADMIN||!ME||!ME.id)return;
+  if(!confirm('⚠ 完全削除の注意\n\n'+ME.name+' を名簿から完全に削除します。\n\n退職した人は「完全削除」ではなく、在籍状況を【退職】にして退職日を入れる運用をおすすめします。\nそうすると予定アプリ(MHS)で、退職日以降は担当から自動で外れ、それより前の予定は実績としてグレー表示で残ります。\n\n完全削除すると、過去の予定の担当が名前で復元できず（IDのまま残る）、実績が追えなくなる場合があります。\n\nそれでも完全に削除しますか？'))return;
+  if(!confirm('本当に '+ME.name+' を完全削除します。\nこの操作は取り消せません。よろしいですか？'))return;
+  memCol().doc(ME.id).delete().then(function(){ closeMemberModal(); toast('削除しました'); }).catch(function(e){ console.error(e); toast('⚠ 削除に失敗'); }); }
 
 /* ---------- スキル管理（社員×項目のマトリクス編集・v0.6.0） ---------- */
 let skillTab='drive';
