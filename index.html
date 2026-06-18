@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.7.6">
+<meta name="app-version" content="0.7.7">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.7.6</div>
+    <div class="ver">CoreMembers v0.7.7</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.6</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.7</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -682,19 +682,19 @@ function renderMemberForm(){
   var bDayOpts='<option value="">日</option>'; for(var _bj=1;_bj<=31;_bj++)bDayOpts+='<option value="'+_bj+'"'+(String(_bj)===_bdd?' selected':'')+'>'+_bj+'日</option>';
   document.getElementById('mm-body').innerHTML=
     '<div class="sec-h">基本</div>'+
-    '<div class="row2"><div class="fld"><label>姓 *</label><input type="text" id="me-lastname" value="'+esc(_ln)+'" placeholder="例：小林"'+dis+'></div><div class="fld"><label>名</label><input type="text" id="me-firstname" value="'+esc(_fn)+'" placeholder="例：裕太"'+dis+'></div></div>'+
-    '<div class="row2"><div class="fld"><label>姓フリガナ</label><input type="text" id="me-lastkana" value="'+esc(_lk)+'" placeholder="コバヤシ"'+dis+'></div><div class="fld"><label>名フリガナ</label><input type="text" id="me-firstkana" value="'+esc(_fk)+'" placeholder="ユウタ"'+dis+'></div></div>'+
-    '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>🎂 誕生日（年は不要）</label><div style="display:flex;gap:6px"><select id="me-bmonth"'+dis+'>'+bMonthOpts+'</select><select id="me-bday"'+dis+'>'+bDayOpts+'</select></div><div style="font-size:11px;color:var(--text3);margin-top:4px">月日だけでOK。入れるとMHSのカレンダーに毎年表示されます。</div></div></div>'+
+    '<div class="row2"><div class="fld"><label>姓 *</label><input type="text" id="me-lastname" value="'+esc(_ln)+'"'+dis+'></div><div class="fld"><label>名</label><input type="text" id="me-firstname" value="'+esc(_fn)+'"'+dis+'></div></div>'+
+    '<div class="row2"><div class="fld"><label>姓フリガナ</label><input type="text" id="me-lastkana" value="'+esc(_lk)+'"'+dis+'></div><div class="fld"><label>名フリガナ</label><input type="text" id="me-firstkana" value="'+esc(_fk)+'"'+dis+'></div></div>'+
+    '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>🎂 誕生日</label><div style="display:flex;gap:6px"><select id="me-bmonth"'+dis+'>'+bMonthOpts+'</select><select id="me-bday"'+dis+'>'+bDayOpts+'</select></div></div></div>'+
     '<div class="sec-h">組織</div>'+
     '<div class="row2"><div class="fld"><label>所属（部）</label><select id="me-dept" onchange="meDeptChange()"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>課（その部の下・任意）</label><span id="me-section-wrap">'+sectionSelectHTML()+'</span></div></div>'+
-    '<div class="row2"><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div><div class="fld"><label>　</label><div style="font-size:11px;color:var(--text3);padding-top:8px">部を選ぶと、その下の課が選べます。部だけでもOK。</div></div></div>'+
+    '<div class="row2"><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div><div class="fld"><label>　</label></div></div>'+
     '<div class="fld"><label>兼務（複数可）</label><div class="seg-pick">'+(subChips||'<span style="font-size:11px;color:var(--text3)">部署未登録</span>')+'</div></div>'+
     '<div class="fld"><label>上位役割（部より上・任意）</label><select id="me-toprole"'+dis+'><option value="">（なし）</option>'+TOP_ROLES.map(function(r){return '<option value="'+r[0]+'"'+(ME.topRole===r[0]?' selected':'')+'>'+r[1]+'</option>';}).join('')+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">代表・役員など。設定すると組織図の最上部に役割として表示（現場の部署とは別。兼任OK）。</div></div>'+
     '<div class="sec-h">雇用</div>'+
     '<div class="row2"><div class="fld"><label>雇用形態</label><select id="me-emp"'+dis+'>'+empOpts+'</select></div><div class="fld"><label>在籍状況</label><select id="me-status"'+dis+'>'+stOpts+'</select></div></div>'+
     '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
     '<div class="sec-h">アプリ連携</div>'+
-    '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">ログインさせる人だけ紐づけ。週2バイト等は「なし」でOK。</div></div>'+
+    '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select></div>'+
     (ro?'<div style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</div>':'');
 }
 // v0.6.0: 部を変えたら、課セレクトを「その部の下」に作り直す（部に合わない課はクリア）。
