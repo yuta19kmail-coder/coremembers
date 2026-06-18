@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.8.1">
+<meta name="app-version" content="0.9.0">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.8.1</div>
+    <div class="ver">CoreMembers v0.9.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.8.1</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.9.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -909,7 +909,10 @@ function renderOrg(){
   document.getElementById('org-list').innerHTML=strip+(strip?'<div class="sec-h" style="margin-top:14px">部署</div>':'')+h;
 }
 let DE=null;
-function openDeptModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=deptById(id);DE=s?JSON.parse(JSON.stringify(s)):null;if(!DE)return;}else{DE={id:null,name:'',type:'section',parentId:'',leaderMemberId:'',color:'#1db97a',order:DEPTS.length};} document.getElementById('dm-title').textContent=id?'部署を編集':'部署を追加'; document.getElementById('dm-del').style.display=id?'inline-block':'none'; var typeOpts=DEPT_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(DE.type===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); var parentOpts='<option value="">（最上位）</option>'+DEPTS.filter(function(x){return x.id!==DE.id;}).map(function(x){return '<option value="'+x.id+'"'+(DE.parentId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); var leadOpts='<option value="">（なし）</option>'+MEMBERS.map(function(x){return '<option value="'+x.id+'"'+(DE.leaderMemberId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); document.getElementById('dm-body').innerHTML='<div class="fld"><label>部署名 *</label><input type="text" id="de-name" value="'+esc(DE.name)+'" placeholder="例：1課 / 整備部 / 受付"></div><div class="row2"><div class="fld"><label>種別</label><select id="de-type">'+typeOpts+'</select></div><div class="fld"><label>色</label><input type="text" id="de-color" value="'+esc(DE.color||'#1db97a')+'"></div></div><div class="row2"><div class="fld"><label>上位部署</label><select id="de-parent">'+parentOpts+'</select></div><div class="fld"><label>責任者</label><select id="de-leader">'+leadOpts+'</select></div></div>'; document.getElementById('dept-modal').classList.add('show'); }
+var DEPT_PALETTE=['#dc2626','#ea580c','#f59e0b','#1db97a','#0ea5e9','#378ADD','#6366f1','#a855f7','#ec4899','#64748b'];
+function deptColorSwatches(){ return '<div style="display:flex;gap:6px;flex-wrap:wrap">'+DEPT_PALETTE.map(function(c){return '<button type="button" title="'+c+'" onclick="deColorSet(\''+c+'\')" style="width:24px;height:24px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--border);background:'+c+';cursor:pointer;padding:0"></button>';}).join('')+'</div>'; }
+function deColorSet(hex){ var i=document.getElementById('de-color'); if(i)i.value=hex; if(DE)DE.color=hex; }
+function openDeptModal(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} if(id){var s=deptById(id);DE=s?JSON.parse(JSON.stringify(s)):null;if(!DE)return;}else{DE={id:null,name:'',type:'section',parentId:'',leaderMemberId:'',color:'#1db97a',order:DEPTS.length};} document.getElementById('dm-title').textContent=id?'部署を編集':'部署を追加'; document.getElementById('dm-del').style.display=id?'inline-block':'none'; var typeOpts=DEPT_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(DE.type===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join(''); var parentOpts='<option value="">（最上位）</option>'+DEPTS.filter(function(x){return x.id!==DE.id;}).map(function(x){return '<option value="'+x.id+'"'+(DE.parentId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); var leadOpts='<option value="">（なし）</option>'+MEMBERS.map(function(x){return '<option value="'+x.id+'"'+(DE.leaderMemberId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join(''); document.getElementById('dm-body').innerHTML='<div class="fld"><label>部署名 *</label><input type="text" id="de-name" value="'+esc(DE.name)+'" placeholder="例：1課 / 整備部 / 受付"></div><div class="row2"><div class="fld"><label>種別</label><select id="de-type">'+typeOpts+'</select></div><div class="fld"><label>テーマカラー</label><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><input type="color" id="de-color" value="'+esc(DE.color||'#1db97a')+'" style="width:48px;height:32px;border:1px solid var(--border);border-radius:8px;padding:0;cursor:pointer">'+deptColorSwatches()+'</div><div style="font-size:11px;color:var(--text3);margin-top:4px">予定アプリ(MHS)で、この組織の予定バーがこの色になります。</div></div></div><div class="row2"><div class="fld"><label>上位部署</label><select id="de-parent">'+parentOpts+'</select></div><div class="fld"><label>責任者</label><select id="de-leader">'+leadOpts+'</select></div></div>'; document.getElementById('dept-modal').classList.add('show'); }
 function closeDeptModal(){ document.getElementById('dept-modal').classList.remove('show'); }
 function saveDeptForm(){ if(!IS_ADMIN)return; var name=(document.getElementById('de-name').value||'').trim(); if(!name){alert('部署名を入力してください。');return;} DE.name=name; DE.type=document.getElementById('de-type').value; DE.color=(document.getElementById('de-color').value||'#1db97a').trim(); DE.parentId=document.getElementById('de-parent').value||''; DE.leaderMemberId=document.getElementById('de-leader').value||''; var data=Object.assign({},DE);var id=data.id;delete data.id; data.updatedAt=window.fb.serverTimestamp(); var ref=id?deptCol().doc(id):deptCol().doc(); ref.set(data,{merge:true}).then(function(){closeDeptModal();toast('保存しました');}).catch(function(e){console.error(e);toast('⚠ 保存に失敗');}); }
 function deleteDeptCur(){ if(!IS_ADMIN||!DE||!DE.id)return; if(!confirm(DE.name+' を削除しますか？（所属社員は未所属になります）'))return; deptCol().doc(DE.id).delete().then(function(){closeDeptModal();toast('削除しました');}).catch(function(e){console.error(e);toast('⚠ 削除に失敗');}); }
