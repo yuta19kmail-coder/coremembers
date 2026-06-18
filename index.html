@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.7.3">
+<meta name="app-version" content="0.7.4">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.7.3</div>
+    <div class="ver">CoreMembers v0.7.4</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.3</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.4</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -642,7 +642,7 @@ function memberCardHTML(m, reorderScope, hideSection){
 let ME=null;
 function openMemberModal(id){
   if(id){ var src=memberById(id); ME=src?JSON.parse(JSON.stringify(src)):null; if(!ME)return; }
-  else { if(!IS_ADMIN){toast('編集は管理者のみ');return;} ME={id:null,name:'',kana:'',color:'#ea580c',primaryDeptId:'',sectionDeptId:'',subDeptIds:[],roleTitle:'',managerId:'',employmentType:'fulltime',status:'active',joinedAt:'',weeklyDays:'',showInSchedule:true,schedulable:true,ext:'',mobile:'',emailWork:'',licenses:[],mt:false,drivableSizes:[],drivingConfidence:'',drivingNotes:'',goableLocationIds:[],homeArea:'',certs:[],skillTags:[],strengths:'',weaknesses:'',portalMemberId:''}; }
+  else { if(!IS_ADMIN){toast('編集は管理者のみ');return;} ME={id:null,name:'',kana:'',color:'#ea580c',primaryDeptId:'',sectionDeptId:'',subDeptIds:[],roleTitle:'',managerId:'',employmentType:'fulltime',status:'active',joinedAt:'',birthday:'',weeklyDays:'',showInSchedule:true,schedulable:true,ext:'',mobile:'',emailWork:'',licenses:[],mt:false,drivableSizes:[],drivingConfidence:'',drivingNotes:'',goableLocationIds:[],homeArea:'',certs:[],skillTags:[],strengths:'',weaknesses:'',portalMemberId:''}; }
   ['licenses','subDeptIds','drivableSizes','goableLocationIds','certs','skillTags','driveCaps','regTasks'].forEach(function(k){ if(!Array.isArray(ME[k]))ME[k]=[]; });
   if(!ME.locSkills||typeof ME.locSkills!=='object')ME.locSkills={};
   // 旧データ移行：locExperience{ok/never} → locSkills{status}
@@ -677,7 +677,7 @@ function renderMemberForm(){
   document.getElementById('mm-body').innerHTML=
     '<div class="sec-h">基本</div>'+
     '<div class="row2"><div class="fld"><label>氏名 *</label><input type="text" id="me-fullname" value="'+esc(ME.name)+'"'+dis+'></div><div class="fld"><label>カナ</label><input type="text" id="me-kana" value="'+esc(ME.kana||'')+'"'+dis+'></div></div>'+
-    '<div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div>'+
+    '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>🎂 誕生日</label><input type="date" id="me-birthday" value="'+esc(ME.birthday||'')+'"'+dis+'><div style="font-size:11px;color:var(--text3);margin-top:4px">入れるとMHSのカレンダーに誕生日が表示されます。</div></div></div>'+
     '<div class="sec-h">組織</div>'+
     '<div class="row2"><div class="fld"><label>所属（部）</label><select id="me-dept" onchange="meDeptChange()"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>課（その部の下・任意）</label><span id="me-section-wrap">'+sectionSelectHTML()+'</span></div></div>'+
     '<div class="row2"><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div><div class="fld"><label>　</label><div style="font-size:11px;color:var(--text3);padding-top:8px">部を選ぶと、その下の課が選べます。部だけでもOK。</div></div></div>'+
@@ -718,6 +718,7 @@ function saveMemberForm(){
   ME.name=name;
   ME.kana=(document.getElementById('me-kana').value||'').trim();
   ME.roleTitle=(document.getElementById('me-role').value||'').trim();
+  { var _bd=document.getElementById('me-birthday'); ME.birthday=(_bd&&_bd.value)||''; }
   ME.ini=name.charAt(0);
   ME.primaryDeptId=document.getElementById('me-dept').value||'';
   { var _se=document.getElementById('me-section'); ME.sectionDeptId=(_se&&_se.value)||''; }
