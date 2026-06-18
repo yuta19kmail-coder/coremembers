@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.7.8">
+<meta name="app-version" content="0.8.0">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.7.8</div>
+    <div class="ver">CoreMembers v0.8.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.8</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.8.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -694,7 +694,8 @@ function renderMemberForm(){
     '<div class="fld"><label>兼務（複数可）</label><div class="seg-pick">'+(subChips||'<span style="font-size:11px;color:var(--text3)">部署未登録</span>')+'</div></div>'+
     '<div class="fld"><label>上位役割（部より上・任意）</label><select id="me-toprole"'+dis+'><option value="">（なし）</option>'+TOP_ROLES.map(function(r){return '<option value="'+r[0]+'"'+(ME.topRole===r[0]?' selected':'')+'>'+r[1]+'</option>';}).join('')+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">代表・役員など。設定すると組織図の最上部に役割として表示（現場の部署とは別。兼任OK）。</div></div>'+
     '<div class="sec-h">雇用</div>'+
-    '<div class="row2"><div class="fld"><label>雇用形態</label><select id="me-emp"'+dis+'>'+empOpts+'</select></div><div class="fld"><label>在籍状況</label><select id="me-status"'+dis+'>'+stOpts+'</select></div></div>'+
+    '<div class="row2"><div class="fld"><label>雇用形態</label><select id="me-emp"'+dis+'>'+empOpts+'</select></div><div class="fld"><label>在籍状況</label><select id="me-status" onchange="meStatusChange()"'+dis+'>'+stOpts+'</select></div></div>'+
+    '<div class="row2" id="me-leftat-row" style="'+((ME.status==='left')?'':'display:none')+'"><div class="fld"><label>退職日</label><input type="date" id="me-leftat" value="'+esc(ME.leftAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="font-size:11px;color:var(--text3);padding-top:8px">予定アプリ(MHS)で、退職日以降は担当から自動で外れ、退職日より前の予定は実績としてグレー表示されます。</div></div></div>'+
     '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
     '<div class="sec-h">アプリ連携</div>'+
     '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select></div>'+
@@ -702,6 +703,8 @@ function renderMemberForm(){
 }
 // v0.6.0: 部を変えたら、課セレクトを「その部の下」に作り直す（部に合わない課はクリア）。
 function meDeptChange(){ ME.primaryDeptId=(document.getElementById('me-dept')||{}).value||''; var sd=deptById(ME.sectionDeptId||''); if(!ME.sectionDeptId||!sd||sd.parentId!==ME.primaryDeptId)ME.sectionDeptId=''; var wrap=document.getElementById('me-section-wrap'); if(wrap)wrap.innerHTML=sectionSelectHTML(); }
+// 在籍状況=退職の時だけ「退職日」欄を表示
+function meStatusChange(){ var v=(document.getElementById('me-status')||{}).value||'active'; var row=document.getElementById('me-leftat-row'); if(row)row.style.display=(v==='left')?'':'none'; }
 function mePick(group,val,el){
   var map={lic:'licenses',size:'drivableSizes',sub:'subDeptIds',drv:'driveCaps',reg:'regTasks'};
   var key=map[group]; if(!key)return; var a=ME[key]||(ME[key]=[]); var i=a.indexOf(val); if(i>=0)a.splice(i,1); else a.push(val); el.classList.toggle('on');
@@ -742,6 +745,7 @@ function saveMemberForm(){
   ME.topRole=document.getElementById('me-toprole').value||'';
   ME.employmentType=document.getElementById('me-emp').value||'fulltime';
   ME.status=document.getElementById('me-status').value||'active';
+  ME.leftAt=(ME.status==='left')?((document.getElementById('me-leftat')||{}).value||''):'';
   ME.joinedAt=document.getElementById('me-joined').value||'';
   ME.showInSchedule=document.getElementById('me-show').checked;
   ME.schedulable=document.getElementById('me-sched').checked;
