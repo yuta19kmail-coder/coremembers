@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.7.4">
+<meta name="app-version" content="0.7.5">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="stylesheet" href="css/launcher.css?v=4">
 <style>
@@ -238,7 +238,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.7.4</div>
+    <div class="ver">CoreMembers v0.7.5</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -253,7 +253,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.4</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.7.5</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -674,10 +674,13 @@ function renderMemberForm(){
   var subChips=DEPTS.map(function(d){return pickH('sub',d.id,d.name,ME.subDeptIds.indexOf(d.id)>=0);}).join('');
   var locBlocks=LOCS.length?LOCS.map(locBlockHTML).join(''):'<span style="font-size:11px;color:var(--text3)">場所マスターが未登録です（📍場所マスターで追加）</span>';
   var dis=ro?' disabled':'';
+  var _bd=String(ME.birthday||'').match(/(\d{1,2})-(\d{1,2})$/), _bmm=_bd?String(+_bd[1]):'', _bdd=_bd?String(+_bd[2]):'';
+  var bMonthOpts='<option value="">月</option>'; for(var _bi=1;_bi<=12;_bi++)bMonthOpts+='<option value="'+_bi+'"'+(String(_bi)===_bmm?' selected':'')+'>'+_bi+'月</option>';
+  var bDayOpts='<option value="">日</option>'; for(var _bj=1;_bj<=31;_bj++)bDayOpts+='<option value="'+_bj+'"'+(String(_bj)===_bdd?' selected':'')+'>'+_bj+'日</option>';
   document.getElementById('mm-body').innerHTML=
     '<div class="sec-h">基本</div>'+
     '<div class="row2"><div class="fld"><label>氏名 *</label><input type="text" id="me-fullname" value="'+esc(ME.name)+'"'+dis+'></div><div class="fld"><label>カナ</label><input type="text" id="me-kana" value="'+esc(ME.kana||'')+'"'+dis+'></div></div>'+
-    '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>🎂 誕生日</label><input type="date" id="me-birthday" value="'+esc(ME.birthday||'')+'"'+dis+'><div style="font-size:11px;color:var(--text3);margin-top:4px">入れるとMHSのカレンダーに誕生日が表示されます。</div></div></div>'+
+    '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>🎂 誕生日（年は不要）</label><div style="display:flex;gap:6px"><select id="me-bmonth"'+dis+'>'+bMonthOpts+'</select><select id="me-bday"'+dis+'>'+bDayOpts+'</select></div><div style="font-size:11px;color:var(--text3);margin-top:4px">月日だけでOK。入れるとMHSのカレンダーに毎年表示されます。</div></div></div>'+
     '<div class="sec-h">組織</div>'+
     '<div class="row2"><div class="fld"><label>所属（部）</label><select id="me-dept" onchange="meDeptChange()"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>課（その部の下・任意）</label><span id="me-section-wrap">'+sectionSelectHTML()+'</span></div></div>'+
     '<div class="row2"><div class="fld"><label>上長</label><select id="me-mgr"'+dis+'>'+mgrOpts+'</select></div><div class="fld"><label>　</label><div style="font-size:11px;color:var(--text3);padding-top:8px">部を選ぶと、その下の課が選べます。部だけでもOK。</div></div></div>'+
@@ -718,7 +721,7 @@ function saveMemberForm(){
   ME.name=name;
   ME.kana=(document.getElementById('me-kana').value||'').trim();
   ME.roleTitle=(document.getElementById('me-role').value||'').trim();
-  { var _bd=document.getElementById('me-birthday'); ME.birthday=(_bd&&_bd.value)||''; }
+  { var _mm=document.getElementById('me-bmonth'), _dd=document.getElementById('me-bday'); var _mv=_mm&&_mm.value, _dv=_dd&&_dd.value; ME.birthday=(_mv&&_dv)?(String(_mv).padStart(2,'0')+'-'+String(_dv).padStart(2,'0')):''; }
   ME.ini=name.charAt(0);
   ME.primaryDeptId=document.getElementById('me-dept').value||'';
   { var _se=document.getElementById('me-section'); ME.sectionDeptId=(_se&&_se.value)||''; }
