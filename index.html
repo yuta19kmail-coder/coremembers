@@ -408,7 +408,7 @@ async function enterApp(member,user){
   var _cm=(member&&member.coremembers)||{};
   CM_ROLE=(member&&(member.master||member.admin))?'オーナー':(_cm.on&&_cm.role?_cm.role:'一般');
   IS_ADMIN=(CM_ROLE==='オーナー'||CM_ROLE==='管理者');   // マスターデータ編集可
-  document.getElementById('me-name').textContent=(member&&member.name)||user.displayName||user.email||'ユーザー';
+  document.getElementById('me-name').textContent=(member&&dispNm(member))||user.displayName||user.email||'ユーザー';
   var rc=document.getElementById('cm-role'); if(rc)rc.textContent=CM_ROLE;
   var av=document.getElementById('u-av'); var ph=member&&(member.photo||member.photoURL); av.innerHTML=ph?('<img src="'+ph+'" alt="">'):esc((member&&member.ini)||String((member&&member.name)||'？').charAt(0));
   if(!IS_ADMIN){ ['btn-new','btn-seed'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display='none';}); }
@@ -514,6 +514,8 @@ function portalById(id){ for(var i=0;i<PORTAL.length;i++)if(PORTAL[i].id===id)re
 function avatarColor(name){ var s=String(name||'？'),h=0; for(var i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))>>>0;} var pal=['#ea580c','#0d9488','#2563eb','#7c3aed','#db2777','#ca8a04','#16a34a','#dc2626','#0891b2','#9333ea','#65a30d','#e11d48']; return pal[h%pal.length]; }
 /* CoreFlow(portalMembers)に紐づくメンバーは“今の”Googleアバターを引く。それ以外は無し→苗字頭文字を生成 */
 function memberPhoto(m){ if(!m)return null; if(m.portalMemberId){ var p=portalById(m.portalMemberId); if(p&&(p.photo||p.photoURL))return p.photo||p.photoURL; } return m.photo||m.photoURL||null; }
+/* 表示名：優先表示名(呼び名)があればそれ、無ければ氏名。各アプリ共通の表示用 */
+function dispNm(m){ return (m&&m.dispName)||(m&&m.name)||''; }
 function avatarHTML(m,sz){ sz=sz||38; var ph=memberPhoto(m); if(ph)return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px"><img src="'+ph+'" alt=""></span>'; var nm=(m&&m.name)||''; var bg=avatarColor(nm||(m&&m.ini)||'？'); var ini=nm?String(nm).trim().charAt(0):((m&&m.ini)||'？'); return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.42)+'px">'+esc(ini)+'</span>'; }
 
 /* ---------- 画面切替 ---------- */
@@ -573,7 +575,7 @@ function renderMembers(){
   var onlyActive=(document.getElementById('mem-onlyactive')||{}).checked;
   var list=MEMBERS.filter(function(m){
     if(onlyActive && m.status==='left')return false;
-    if(q){ var hay=_normEmail((m.name||'')+(m.kana||'')+(m.roleTitle||'')).replace(/\s/g,''); if(hay.indexOf(q)<0)return false; }
+    if(q){ var hay=_normEmail((m.name||'')+(m.kana||'')+(m.dispName||'')+(m.roleTitle||'')).replace(/\s/g,''); if(hay.indexOf(q)<0)return false; }
     return true;
   });
   document.getElementById('mem-count').textContent='（'+list.length+'人）';
@@ -634,7 +636,7 @@ function memberCardHTML(m, reorderScope, hideSection){
   var secNm=(!hideSection&&memberDeptIds(m).sectionId)?deptName(memberDeptIds(m).sectionId):''; var secB=secNm?'<span class="badge b-dept">🏢 '+esc(secNm)+'</span>':'';
   var ord=(reorderScope!==undefined)?reorderBtns(m.id,-1,reorderScope):'';
   return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avatarHTML(m,38)+
-    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
+    '<div class="grow"><div class="mn">'+esc(dispNm(m)||'(名称未設定)')+(m.dispName?'<span class="mk">'+esc(m.name)+'</span>':(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':''))+topB+statusBadge+'</div>'+
     '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
 }
 
@@ -642,7 +644,7 @@ function memberCardHTML(m, reorderScope, hideSection){
 let ME=null;
 function openMemberModal(id){
   if(id){ var src=memberById(id); ME=src?JSON.parse(JSON.stringify(src)):null; if(!ME)return; }
-  else { if(!IS_ADMIN){toast('編集は管理者のみ');return;} ME={id:null,name:'',kana:'',lastName:'',firstName:'',lastKana:'',firstKana:'',color:'#ea580c',primaryDeptId:'',sectionDeptId:'',subDeptIds:[],roleTitle:'',managerId:'',employmentType:'fulltime',status:'active',joinedAt:'',birthday:'',weeklyDays:'',showInSchedule:true,schedulable:true,ext:'',mobile:'',emailWork:'',licenses:[],mt:false,drivableSizes:[],drivingConfidence:'',drivingNotes:'',goableLocationIds:[],homeArea:'',certs:[],skillTags:[],strengths:'',weaknesses:'',portalMemberId:''}; }
+  else { if(!IS_ADMIN){toast('編集は管理者のみ');return;} ME={id:null,name:'',kana:'',lastName:'',firstName:'',lastKana:'',firstKana:'',dispName:'',color:'#ea580c',primaryDeptId:'',sectionDeptId:'',subDeptIds:[],roleTitle:'',managerId:'',employmentType:'fulltime',status:'active',joinedAt:'',birthday:'',weeklyDays:'',showInSchedule:true,schedulable:true,ext:'',mobile:'',emailWork:'',licenses:[],mt:false,drivableSizes:[],drivingConfidence:'',drivingNotes:'',goableLocationIds:[],homeArea:'',certs:[],skillTags:[],strengths:'',weaknesses:'',portalMemberId:''}; }
   ['licenses','subDeptIds','drivableSizes','goableLocationIds','certs','skillTags','driveCaps','regTasks'].forEach(function(k){ if(!Array.isArray(ME[k]))ME[k]=[]; });
   if(!ME.locSkills||typeof ME.locSkills!=='object')ME.locSkills={};
   // 旧データ移行：locExperience{ok/never} → locSkills{status}
@@ -663,7 +665,7 @@ function renderMemberForm(){
   var ro=!IS_ADMIN;
   // v0.6.0: 所属（部）は最上位の部署（親を持たない）だけ。課はその下から別途選ぶ。
   var deptOpts='<option value="">（未所属）</option>'+DEPTS.filter(function(d){return !d.parentId;}).map(function(d){return '<option value="'+d.id+'"'+(ME.primaryDeptId===d.id?' selected':'')+'>'+esc(d.name)+'</option>';}).join('');
-  var mgrOpts='<option value="">（なし）</option>'+MEMBERS.filter(function(x){return x.id!==ME.id;}).map(function(x){return '<option value="'+x.id+'"'+(ME.managerId===x.id?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+  var mgrOpts='<option value="">（なし）</option>'+MEMBERS.filter(function(x){return x.id!==ME.id;}).map(function(x){return '<option value="'+x.id+'"'+(ME.managerId===x.id?' selected':'')+'>'+esc(dispNm(x))+'</option>';}).join('');
   var empOpts=EMP_TYPES.map(function(e){return '<option value="'+e[0]+'"'+(ME.employmentType===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
   var stOpts=STATUSES.map(function(e){return '<option value="'+e[0]+'"'+((ME.status||'active')===e[0]?' selected':'')+'>'+e[1]+'</option>';}).join('');
   var confOpts='<option value="">—</option>'+[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(String(ME.drivingConfidence)===String(n)?' selected':'')+'>'+n+'</option>';}).join('');
@@ -684,6 +686,7 @@ function renderMemberForm(){
     '<div class="sec-h">基本</div>'+
     '<div class="row2"><div class="fld"><label>姓 *</label><input type="text" id="me-lastname" value="'+esc(_ln)+'"'+dis+'></div><div class="fld"><label>名</label><input type="text" id="me-firstname" value="'+esc(_fn)+'"'+dis+'></div></div>'+
     '<div class="row2"><div class="fld"><label>姓フリガナ</label><input type="text" id="me-lastkana" value="'+esc(_lk)+'"'+dis+'></div><div class="fld"><label>名フリガナ</label><input type="text" id="me-firstkana" value="'+esc(_fk)+'"'+dis+'></div></div>'+
+    '<div class="fld"><label>呼び名（優先表示名）</label><input type="text" id="me-dispname" value="'+esc(ME.dispName||'')+'" placeholder="設定すると各アプリでこの名前で表示（例：チーフ／山田（太）)"'+dis+'></div>'+
     '<div class="row2"><div class="fld"><label>役職</label><input type="text" id="me-role" value="'+esc(ME.roleTitle||'')+'" placeholder="例：工場長 / チーフ"'+dis+'></div><div class="fld"><label>🎂 誕生日</label><div style="display:flex;gap:6px"><select id="me-bmonth"'+dis+'>'+bMonthOpts+'</select><select id="me-bday"'+dis+'>'+bDayOpts+'</select></div></div></div>'+
     '<div class="sec-h">組織</div>'+
     '<div class="row2"><div class="fld"><label>所属（部）</label><select id="me-dept" onchange="meDeptChange()"'+dis+'>'+deptOpts+'</select></div><div class="fld"><label>課（その部の下・任意）</label><span id="me-section-wrap">'+sectionSelectHTML()+'</span></div></div>'+
@@ -728,6 +731,7 @@ function saveMemberForm(){
   ME.lastName=_ln; ME.firstName=_fn; ME.lastKana=_lk; ME.firstKana=_fk;
   ME.name=(_ln+(_fn?(' '+_fn):'')).trim();
   ME.kana=(_lk+(_fk?(' '+_fk):'')).trim();
+  ME.dispName=(document.getElementById('me-dispname').value||'').trim();
   var name=ME.name;
   ME.roleTitle=(document.getElementById('me-role').value||'').trim();
   { var _mm=document.getElementById('me-bmonth'), _dd=document.getElementById('me-bday'); var _mv=_mm&&_mm.value, _dv=_dd&&_dd.value; ME.birthday=(_mv&&_dv)?(String(_mv).padStart(2,'0')+'-'+String(_dv).padStart(2,'0')):''; }
@@ -809,7 +813,7 @@ function renderSkills(){
   else { html=skillMatrixLoc(); }
   body.innerHTML=bar+'<div class="sk-wrap">'+html+'</div>'+(IS_ADMIN?'':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>');
 }
-function skNameCell(m){ return '<th class="sk-name"><span class="sk-nmwrap">'+avatarHTML(m,26)+'<span class="sk-nm">'+esc(m.name||'(無名)')+'</span></span></th>'; }
+function skNameCell(m){ return '<th class="sk-name"><span class="sk-nmwrap">'+avatarHTML(m,26)+'<span class="sk-nm">'+esc(dispNm(m)||'(無名)')+'</span></span></th>'; }
 function skillMatrixSimple(field, items, boolCols, extraCols){
   boolCols=boolCols||[]; extraCols=extraCols||[];
   var head=items.map(function(it){return '<th class="sk-col">'+esc(it[1])+'</th>';}).join('')
@@ -882,7 +886,7 @@ function execStripHTML(){
     var sub=(m.subDeptIds||[]).map(function(id){var d=deptById(id);return d?d.name:'';}).filter(Boolean);
     var where=[]; if(dept)where.push(dept.name+(m.roleTitle?'／'+m.roleTitle:'')); else if(m.roleTitle)where.push(m.roleTitle); if(sub.length)where.push('兼務：'+sub.join('・'));
     return '<div class="execcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+avatarHTML(m,40)
-      +'<div class="grow"><div class="lt">'+esc(m.name)+' <span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span></div>'
+      +'<div class="grow"><div class="lt">'+esc(dispNm(m))+' <span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span></div>'
       +'<div class="ls">'+(where.length?esc(where.join('・')):'（現場の所属なし）')+'</div></div></div>';
   }).join('');
   return '<div class="execstrip"><div class="execlabel">上位役割</div><div class="execrow">'+cards+'</div></div>';
