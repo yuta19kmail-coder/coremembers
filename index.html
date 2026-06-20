@@ -122,6 +122,17 @@
   .execcard .lt{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
   .execcard .ls{font-size:11px;color:var(--text3);margin-top:1px}
   .lwrap{margin-bottom:7px}
+  /* 貸与・アカウント */
+  .lend-card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .lend-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .lend-nm{font-weight:700;font-size:15px}
+  .lend-role{font-size:11px;color:var(--text3)}
+  .lend-left{font-size:10px;font-weight:700;background:#64748b;color:#fff;border-radius:5px;padding:1px 7px}
+  .lend-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media(max-width:760px){.lend-cols{grid-template-columns:1fr}}
+  .lend-col-h{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px}
+  .lend-none{font-size:11px;color:var(--text3);margin-bottom:4px}
+  .lend-add{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;margin-top:2px}
   /* スキル管理マトリクス（v0.6.0） */
   .sk-tabs{display:flex;gap:6px;flex-wrap:wrap}
   .sk-tab{font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text2);cursor:pointer}
@@ -277,6 +288,7 @@
     <div class="si-item" data-v="org" onclick="showView('org')"><span class="ic">🏢</span><span>組織（部署）</span></div>
     <div class="si-item" data-v="locations" onclick="showView('locations')"><span class="ic">📍</span><span>場所マスター</span></div>
     <div class="si-item" data-v="skills" onclick="showView('skills')"><span class="ic">🧩</span><span>スキル管理</span></div>
+    <div class="si-item" data-v="lend" onclick="showView('lend')"><span class="ic">🔑</span><span>貸与・アカウント</span></div>
     <div class="si-item" data-v="settings" onclick="showView('settings')"><span class="ic">⚙️</span><span>設定</span></div>
     <div class="si-title">情報</div>
     <div class="si-item" data-v="about" onclick="showView('about')"><span class="ic">ℹ️</span><span>このアプリについて</span></div>
@@ -315,6 +327,13 @@
       <div class="vhead"><div class="vtitle">🧩 スキル管理</div><div class="spacer"></div><div id="skills-tabs" class="sk-tabs"></div></div>
       <p style="font-size:12px;color:var(--text3);margin:0 0 10px">社員（行）× 項目（列）の表で、まとめて編集できます。セルをクリックで切り替え、その場で保存されます。社員詳細では結果だけ畳んで表示されます。</p>
       <div id="skills-body"></div>
+    </section>
+
+    <!-- 貸与・アカウント（退職時の回収・ログアウト台帳） -->
+    <section id="view-lend" class="view">
+      <div class="vhead"><div class="vtitle">🔑 貸与・アカウント</div></div>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 10px">誰に何を貸しているか（鍵・制服・PC・工具・社用車など）、どのアカウントを使わせているか（会社のX・Instagram等）の台帳です。<b>退職時にここを見て、回収・パスワード変更・ログアウト</b>に使います。記録のみ（自動処理はしません）。</p>
+      <div id="lend-body"></div>
     </section>
 
     <!-- 設定 -->
@@ -530,7 +549,43 @@ function showView(v){
   document.querySelectorAll('.si-item').forEach(function(i){i.classList.remove('active');});
   var el=document.getElementById('view-'+v); if(el)el.classList.add('active');
   document.querySelectorAll('.si-item[data-v="'+v+'"]').forEach(function(i){i.classList.add('active');});
-  if(v==='members')renderMembers(); else if(v==='org')renderOrg(); else if(v==='locations')renderLocations(); else if(v==='skills')renderSkills(); else if(v==='settings')renderSettings();
+  if(v==='members')renderMembers(); else if(v==='org')renderOrg(); else if(v==='locations')renderLocations(); else if(v==='skills')renderSkills(); else if(v==='lend')renderLend(); else if(v==='settings')renderSettings();
+}
+
+/* ---------- 貸与・アカウント（退職時の回収・ログアウト台帳。記録のみ） ---------- */
+var LEND_BUF={};
+function _lendBuf(m){ if(!LEND_BUF[m.id])LEND_BUF[m.id]={ lendItems:(m.lendItems||[]).map(function(o){return {item:o.item||'',note:o.note||''};}), accounts:(m.accounts||[]).map(function(o){return {service:o.service||'',note:o.note||''};}) }; return LEND_BUF[m.id]; }
+function lendSet(id,key,i,f,v){ var b=LEND_BUF[id]; if(b&&b[key]&&b[key][i])b[key][i][f]=v; }
+function lendAdd(id,key){ var b=LEND_BUF[id]; if(!b)return; b[key].push(key==='lendItems'?{item:'',note:''}:{service:'',note:''}); renderLend(); }
+function lendDel(id,key,i){ var b=LEND_BUF[id]; if(b&&b[key]){ b[key].splice(i,1); renderLend(); } }
+function lendSave(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var b=LEND_BUF[id]; if(!b)return;
+  var lend=b.lendItems.filter(function(o){return (o.item||'').trim()||(o.note||'').trim();});
+  var acct=b.accounts.filter(function(o){return (o.service||'').trim()||(o.note||'').trim();});
+  b.lendItems=lend; b.accounts=acct;
+  saveMemberField(id,{lendItems:lend,accounts:acct}).then(function(){ toast('保存しました'); renderLend(); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
+}
+function renderLend(){
+  var body=document.getElementById('lend-body'); if(!body)return;
+  var list=(MEMBERS||[]).slice();
+  if(!list.length){ body.innerHTML='<div class="empty">社員が未登録です。</div>'; return; }
+  var ro=!IS_ADMIN;
+  function rows(m,key){ var b=_lendBuf(m); return b[key].map(function(o,i){
+    var p1=(key==='lendItems')?'品目（鍵 / PC / 制服 / 社用車…）':'サービス（会社X / Instagram / Google…）';
+    var p2=(key==='lendItems')?'メモ（番号・台数など）':'ID・メモ（共有/専用・権限）';
+    var f1=(key==='lendItems')?'item':'service';
+    return '<div style="display:flex;gap:6px;margin-bottom:5px;align-items:center"><input type="text" value="'+esc(o[f1]||'')+'" placeholder="'+p1+'" oninput="lendSet(\''+escA(m.id)+'\',\''+key+'\','+i+',\''+f1+'\',this.value)" style="flex:1"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.note||'')+'" placeholder="'+p2+'" oninput="lendSet(\''+escA(m.id)+'\',\''+key+'\','+i+',\'note\',this.value)" style="flex:1"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="lendDel(\''+escA(m.id)+'\',\''+key+'\','+i+')" title="削除" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>';
+  }).join(''); }
+  body.innerHTML=list.map(function(m){
+    var left=(m.status==='left');
+    var lendRows=rows(m,'lendItems'), acctRows=rows(m,'accounts');
+    return '<div class="lend-card">'+
+      '<div class="lend-head">'+avatarHTML(m,30)+'<span class="lend-nm">'+esc(m.name||'(無名)')+'</span>'+(m.roleTitle?'<span class="lend-role">'+esc(m.roleTitle)+'</span>':'')+(left?'<span class="lend-left">退職</span>':'')+(ro?'':'<button class="btn-save" style="margin-left:auto" onclick="lendSave(\''+escA(m.id)+'\')">💾 保存</button>')+'</div>'+
+      '<div class="lend-cols">'+
+        '<div class="lend-col"><div class="lend-col-h">🔑 貸与品</div>'+(lendRows||'<div class="lend-none">なし</div>')+(ro?'':'<button class="lend-add" onclick="lendAdd(\''+escA(m.id)+'\',\'lendItems\')">＋ 追加</button>')+'</div>'+
+        '<div class="lend-col"><div class="lend-col-h">🔐 使わせているアカウント</div>'+(acctRows||'<div class="lend-none">なし</div>')+(ro?'':'<button class="lend-add" onclick="lendAdd(\''+escA(m.id)+'\',\'accounts\')">＋ 追加</button>')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('')+(ro?'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>':'');
 }
 
 /* ---------- 社員名簿 ---------- */
@@ -703,31 +758,8 @@ function renderMemberForm(){
     '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
     '<div class="sec-h">アプリ連携</div>'+
     '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select></div>'+
-    '<div class="sec-h">🔑 貸与・アカウント（退職時の回収・ログアウト用）</div>'+
-    '<div class="fld"><label>貸与品（鍵・制服・PC・工具・社用車など）</label><div id="me-lend"></div></div>'+
-    '<div class="fld"><label>使わせているアカウント</label><div id="me-acct"></div><div style="font-size:11px;color:var(--text3);margin-top:4px">会社のX・Instagram・各種ログインなど。退職時にここを見て、パスワード変更／ログアウト／回収に使います。</div></div>'+
     (ro?'<div style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</div>':'');
-  meLendRender(); meAcctRender();
 }
-/* 貸与品（ME.lendItems）／使わせているアカウント（ME.accounts）＝退職時の回収・ログアウト台帳。
-   ※記録だけ（AI・自動処理には使わない） */
-function _meRo(){ return !IS_ADMIN; }
-function meLendRender(){
-  var box=document.getElementById('me-lend'); if(!box)return; if(!Array.isArray(ME.lendItems))ME.lendItems=[]; var ro=_meRo();
-  var rows=ME.lendItems.map(function(o,i){ return '<div style="display:flex;gap:6px;margin-bottom:5px;align-items:center"><input type="text" value="'+esc(o.item||'')+'" placeholder="品目（例：店舗の鍵 / ノートPC / 制服）" oninput="meLendSet('+i+',\'item\',this.value)" style="flex:1"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.note||'')+'" placeholder="メモ（番号・台数など）" oninput="meLendSet('+i+',\'note\',this.value)" style="flex:1"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="meLendDel('+i+')" title="削除" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>'; }).join('');
-  box.innerHTML=rows+(ro?((ME.lendItems.length)?'':'<div style="font-size:11px;color:var(--text3)">なし</div>'):'<button onclick="meLendAdd()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;margin-top:2px">＋ 貸与品を追加</button>');
-}
-function meLendAdd(){ if(!Array.isArray(ME.lendItems))ME.lendItems=[]; ME.lendItems.push({item:'',note:''}); meLendRender(); }
-function meLendDel(i){ ME.lendItems.splice(i,1); meLendRender(); }
-function meLendSet(i,f,v){ if(ME.lendItems&&ME.lendItems[i])ME.lendItems[i][f]=v; }
-function meAcctRender(){
-  var box=document.getElementById('me-acct'); if(!box)return; if(!Array.isArray(ME.accounts))ME.accounts=[]; var ro=_meRo();
-  var rows=ME.accounts.map(function(o,i){ return '<div style="display:flex;gap:6px;margin-bottom:5px;align-items:center"><input type="text" value="'+esc(o.service||'')+'" placeholder="サービス（例：会社X / Instagram / Google）" oninput="meAcctSet('+i+',\'service\',this.value)" style="flex:1"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.note||'')+'" placeholder="ID・メモ（共有/専用・権限など）" oninput="meAcctSet('+i+',\'note\',this.value)" style="flex:1"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="meAcctDel('+i+')" title="削除" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>'; }).join('');
-  box.innerHTML=rows+(ro?((ME.accounts.length)?'':'<div style="font-size:11px;color:var(--text3)">なし</div>'):'<button onclick="meAcctAdd()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;margin-top:2px">＋ アカウントを追加</button>');
-}
-function meAcctAdd(){ if(!Array.isArray(ME.accounts))ME.accounts=[]; ME.accounts.push({service:'',note:''}); meAcctRender(); }
-function meAcctDel(i){ ME.accounts.splice(i,1); meAcctRender(); }
-function meAcctSet(i,f,v){ if(ME.accounts&&ME.accounts[i])ME.accounts[i][f]=v; }
 // v0.6.0: 部を変えたら、課セレクトを「その部の下」に作り直す（部に合わない課はクリア）。
 function meDeptChange(){ ME.primaryDeptId=(document.getElementById('me-dept')||{}).value||''; var sd=deptById(ME.sectionDeptId||''); if(!ME.sectionDeptId||!sd||sd.parentId!==ME.primaryDeptId)ME.sectionDeptId=''; var wrap=document.getElementById('me-section-wrap'); if(wrap)wrap.innerHTML=sectionSelectHTML(); }
 // 在籍状況=退職の時だけ「退職日」欄を表示
