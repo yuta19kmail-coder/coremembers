@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.12.4">
+<meta name="app-version" content="0.12.5">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="icon" type="image/png" href="favicon.png?v=1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
@@ -289,7 +289,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.12.4</div>
+    <div class="ver">CoreMembers v0.12.5</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -304,7 +304,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.4</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.5</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -915,14 +915,14 @@ function renderMembers(){
       var nm=(k==='_none')?'未所属':deptName(k); var col=(k==='_none')?'#64748b':deptColor(k);
       h+='<div class="dept-group"><div class="dept-h"><span class="dot" style="background:'+col+'"></span>'+esc(nm)+'<span class="cnt">'+ms.length+'人</span></div>';
       if(k==='_none'){
-        ms.forEach(function(m){ h+=memberCardHTML(m, canReorder?'_none':undefined); });
+        ms.forEach(function(m){ h+=memberCardHTML(m, canReorder?'_none':undefined, true); });
       } else {
         var subs=DEPTS.filter(function(d){return d.parentId===k;});   // この部の課（DEPTSはorder順）
         if(!subs.length){
-          ms.forEach(function(m){ h+=memberCardHTML(m, canReorder?('dept:'+k):undefined); });
+          ms.forEach(function(m){ h+=memberCardHTML(m, canReorder?('dept:'+k):undefined, true); });
         } else {
           var noSec=ms.filter(function(m){return !memberDeptIds(m).sectionId;});
-          noSec.forEach(function(m){ h+=memberCardHTML(m, canReorder?('deptnosec:'+k):undefined); });
+          noSec.forEach(function(m){ h+=memberCardHTML(m, canReorder?('deptnosec:'+k):undefined, true); });
           subs.forEach(function(sd){
             var sm=ms.filter(function(m){return memberDeptIds(m).sectionId===sd.id;});
             if(!sm.length)return;
@@ -946,7 +946,9 @@ function memberCardHTML(m, reorderScope, hideSection){
   var noplan = (m.showInSchedule===false)?'<span class="badge b-noplan">予定非表示</span>':'';
   var topB = m.topRole?'<span class="badge b-top">'+esc(topRoleLabel(m.topRole))+'</span>':'';
   var dr=[]; if(m.mt)dr.push('MT可'); if(m.licenses&&m.licenses.length)dr.push(m.licenses.slice(0,3).join('/'));
-  var secNm=(!hideSection&&memberDeptIds(m).sectionId)?deptName(memberDeptIds(m).sectionId):''; var secB=secNm?'<span class="badge b-dept">🏢 '+esc(secNm)+'</span>':'';
+  // v0.12.5: 所属バッジ＝「部名+課名」（例：整備部2課）／課が無い人は「部名」（例：車販部）。部署ビューはヘッダーで分かるので hideSection で抑制。
+  var _dd=memberDeptIds(m); var _deptNm=_dd.deptId?deptName(_dd.deptId):''; var _secNm=_dd.sectionId?deptName(_dd.sectionId):''; var _deptLabel=_deptNm?(_deptNm+_secNm):_secNm;
+  var secB=(!hideSection&&_deptLabel)?'<span class="badge b-dept">🏢 '+esc(_deptLabel)+'</span>':'';
   var ord=(reorderScope!==undefined)?reorderBtns(m.id,-1,reorderScope):'';
   // カード右の「閲覧権限」ボタン（①②のみ）。カード本体クリック＝従来の編集モーダルとは stopPropagation で分離。
   var visBtn = IS_ADMIN
