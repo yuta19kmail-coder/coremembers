@@ -133,8 +133,7 @@
   .lend-sum{margin-left:auto;font-size:12px;color:var(--text2);font-weight:700;white-space:nowrap}
   .lend-sum0{color:var(--text3);font-weight:400}
   .lend-caret{color:var(--text3);font-size:11px;margin-left:6px}
-  .lend-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;padding:0 14px 14px}
-  @media(max-width:760px){.lend-cols{grid-template-columns:1fr}}
+  .lend-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;align-items:start;padding:0 14px 14px}
   .lend-col-h{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px}
   .lend-defgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
   .lend-cell{border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--bg3)}
@@ -267,7 +266,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.11.1</div>
+    <div class="ver">CoreMembers v0.11.2</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -282,7 +281,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.11.1</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.11.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -573,8 +572,8 @@ function showView(v){
 
 /* ---------- 貸与・アカウント（既定チェック＋自由入力。退職時の回収・ログアウト台帳） ---------- */
 var LEND_BUF={};
-function _lendBuf(m){ if(!LEND_BUF[m.id])LEND_BUF[m.id]={ lendItems:(m.lendItems||[]).map(function(o){return {item:o.item||'',note:o.note||''};}), accounts:(m.accounts||[]).map(function(o){return {service:o.service||'',note:o.note||''};}) }; return LEND_BUF[m.id]; }
-function _lendNF(key){ return key==='lendItems'?'item':'service'; }
+function _lendBuf(m){ if(!LEND_BUF[m.id])LEND_BUF[m.id]={ lendItems:(m.lendItems||[]).map(function(o){return {item:o.item||'',note:o.note||''};}), accounts:(m.accounts||[]).map(function(o){return {service:o.service||'',note:o.note||''};}), others:(m.others||[]).map(function(o){return {item:o.item||'',note:o.note||''};}) }; return LEND_BUF[m.id]; }
+function _lendNF(key){ return key==='accounts'?'service':'item'; }
 function lendDefToggle(id,key,name){ var b=LEND_BUF[id]; if(!b)return; var arr=b[key], nf=_lendNF(key), idx=-1; for(var i=0;i<arr.length;i++){if(arr[i][nf]===name){idx=i;break;}} if(idx>=0)arr.splice(idx,1); else { var o={note:''}; o[nf]=name; arr.push(o); } renderLend(); }
 function lendDefMemo(id,key,name,v){ var b=LEND_BUF[id]; if(!b)return; var nf=_lendNF(key); for(var i=0;i<b[key].length;i++){ if(b[key][i][nf]===name){ b[key][i].note=v; return; } } }
 function lendFreeSet(id,key,idx,f,v){ var b=LEND_BUF[id]; if(b&&b[key]&&b[key][idx])b[key][idx][f]=v; }
@@ -583,35 +582,37 @@ function lendFreeDel(id,key,idx){ var b=LEND_BUF[id]; if(b&&b[key]){ b[key].spli
 function lendSave(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var b=LEND_BUF[id]; if(!b)return;
   var lend=b.lendItems.filter(function(o){return (o.item||'').trim()||(o.note||'').trim();});
   var acct=b.accounts.filter(function(o){return (o.service||'').trim()||(o.note||'').trim();});
-  b.lendItems=lend; b.accounts=acct;
-  saveMemberField(id,{lendItems:lend,accounts:acct}).then(function(){ toast('保存しました'); renderLend(); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
+  var oth=b.others.filter(function(o){return (o.item||'').trim()||(o.note||'').trim();});
+  b.lendItems=lend; b.accounts=acct; b.others=oth;
+  saveMemberField(id,{lendItems:lend,accounts:acct,others:oth}).then(function(){ toast('保存しました'); renderLend(); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
 }
 var LEND_OPEN={};
 function lendToggleOpen(id){ LEND_OPEN[id]=!LEND_OPEN[id]; renderLend(); }
 function _lendGroupHTML(m,key,defaults,title,ph){
   var b=_lendBuf(m), arr=b[key], nf=_lendNF(key), ro=!IS_ADMIN;
-  var defH=defaults.map(function(name){
+  var defH=defaults.length?('<div class="lend-defgrid">'+defaults.map(function(name){
     var on=false, note=''; for(var i=0;i<arr.length;i++){ if(arr[i][nf]===name){ on=true; note=arr[i].note||''; break; } }
     return '<div class="lend-cell'+(on?' on':'')+'"><label><input type="checkbox" '+(on?'checked':'')+(ro?' disabled':'')+' onchange="lendDefToggle(\''+escA(m.id)+'\',\''+key+'\',\''+escA(name)+'\')"><span>'+esc(name)+'</span></label>'+(on?('<input class="lend-cmemo" type="text" value="'+esc(note)+'" placeholder="メモ（番号・残額など・任意）" oninput="lendDefMemo(\''+escA(m.id)+'\',\''+key+'\',\''+escA(name)+'\',this.value)"'+(ro?' disabled':'')+'>'):'')+'</div>';
-  }).join('');
+  }).join('')+'</div>'):'';
   var freeItems=arr.map(function(x,idx){return {x:x,idx:idx};}).filter(function(o){ return defaults.indexOf(o.x[nf])<0; });
   var freeH=freeItems.map(function(o){
     return '<div class="lend-otherrow"><input type="text" value="'+esc(o.x[nf]||'')+'" placeholder="'+ph+'" oninput="lendFreeSet(\''+escA(m.id)+'\',\''+key+'\','+o.idx+',\''+nf+'\',this.value)"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.x.note||'')+'" placeholder="メモ" oninput="lendFreeSet(\''+escA(m.id)+'\',\''+key+'\','+o.idx+',\'note\',this.value)"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="lendFreeDel(\''+escA(m.id)+'\',\''+key+'\','+o.idx+')" title="削除" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>';
   }).join('');
-  return '<div class="lend-col"><div class="lend-col-h">'+title+'</div><div class="lend-defgrid">'+defH+'</div>'+
-    '<div class="lend-other"><div class="lend-other-h">その他（自由入力）</div>'+(freeH||(ro?'<div style="font-size:11px;color:var(--text3)">なし</div>':''))+(ro?'':'<button class="lend-add" onclick="lendFreeAdd(\''+escA(m.id)+'\',\''+key+'\')">＋ 追加</button>')+'</div></div>';
+  var addH = ro ? (freeH||(defaults.length?'':'<div style="font-size:11px;color:var(--text3)">なし</div>')) : (freeH+'<button class="lend-add" onclick="lendFreeAdd(\''+escA(m.id)+'\',\''+key+'\')">＋ 追加</button>');
+  var addWrap = defaults.length ? ('<div class="lend-other">'+addH+'</div>') : addH;
+  return '<div class="lend-col"><div class="lend-col-h">'+title+'</div>'+defH+addWrap+'</div>';
 }
-function _lendCount(m){ var b=_lendBuf(m); return { l:b.lendItems.filter(function(o){return (o.item||'').trim();}).length, a:b.accounts.filter(function(o){return (o.service||'').trim();}).length }; }
+function _lendCount(m){ var b=_lendBuf(m); return { l:b.lendItems.filter(function(o){return (o.item||'').trim();}).length, a:b.accounts.filter(function(o){return (o.service||'').trim();}).length, o:b.others.filter(function(o){return (o.item||'').trim();}).length }; }
 function renderLend(){
   var body=document.getElementById('lend-body'); if(!body)return;
   var list=(MEMBERS||[]).slice();
   if(!list.length){ body.innerHTML='<div class="empty">社員が未登録です。</div>'; return; }
   var ro=!IS_ADMIN;
-  body.innerHTML='<p style="font-size:12px;color:var(--text3);margin:0 0 10px">名前をクリックで開閉。チェックで貸与/アカウントを記録、無い項目は「その他」に自由入力。</p>'+list.map(function(m){
+  body.innerHTML='<p style="font-size:12px;color:var(--text3);margin:0 0 10px">名前をクリックで開閉。貸与・アカウントは既定をチェック、無い分は各列の「＋ 追加」で。どちらにも当てはまらない物は「その他」へ。</p>'+list.map(function(m){
     var open=!!LEND_OPEN[m.id], cnt=_lendCount(m), left=(m.status==='left');
-    var sum=(cnt.l||cnt.a)?('<span class="lend-sum">🔑 '+cnt.l+'　🔐 '+cnt.a+'</span>'):'<span class="lend-sum lend-sum0">未登録</span>';
+    var sum=(cnt.l||cnt.a||cnt.o)?('<span class="lend-sum">🔑 '+cnt.l+'　🔐 '+cnt.a+(cnt.o?'　🗂 '+cnt.o:'')+'</span>'):'<span class="lend-sum lend-sum0">未登録</span>';
     var head='<div class="lend-head" onclick="lendToggleOpen(\''+escA(m.id)+'\')">'+avatarHTML(m,28)+'<span class="lend-nm">'+esc(m.name||'(無名)')+'</span>'+(m.roleTitle?'<span class="lend-role">'+esc(m.roleTitle)+'</span>':'')+(left?'<span class="lend-left">退職</span>':'')+sum+'<span class="lend-caret">'+(open?'▲':'▼')+'</span></div>';
-    var bd=open?('<div class="lend-cols">'+_lendGroupHTML(m,'lendItems',LEND_DEFAULTS,'🔑 貸与品','品目')+_lendGroupHTML(m,'accounts',ACCT_DEFAULTS,'🔐 使わせているアカウント','サービス')+'</div>'+(ro?'':'<div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-save" onclick="lendSave(\''+escA(m.id)+'\')">💾 保存</button></div>')):'';
+    var bd=open?('<div class="lend-cols">'+_lendGroupHTML(m,'lendItems',LEND_DEFAULTS,'🔑 貸与','品目')+_lendGroupHTML(m,'accounts',ACCT_DEFAULTS,'🔐 アカウント','サービス')+_lendGroupHTML(m,'others',[],'🗂 その他','内容')+'</div>'+(ro?'':'<div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-save" onclick="lendSave(\''+escA(m.id)+'\')">💾 保存</button></div>')):'';
     return '<div class="lend-card'+(open?' open':'')+'">'+head+bd+'</div>';
   }).join('')+(ro?'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>':'');
 }
