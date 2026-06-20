@@ -133,6 +133,9 @@
   .lend-col-h{font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px}
   .lend-none{font-size:11px;color:var(--text3);margin-bottom:4px}
   .lend-add{background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;margin-top:2px}
+  .lend-defrow{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap}
+  .lend-chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;min-width:150px}
+  .lend-chk input{width:16px;height:16px;accent-color:var(--acc)}
   /* スキル管理マトリクス（v0.6.0） */
   .sk-tabs{display:flex;gap:6px;flex-wrap:wrap}
   .sk-tab{font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg2);color:var(--text2);cursor:pointer}
@@ -253,7 +256,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.10.0</div>
+    <div class="ver">CoreMembers v0.11.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -268,7 +271,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.10.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.11.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -486,6 +489,11 @@ function topRoleLabel(v){ var x=TOP_ROLES.find(function(e){return e[0]===v;}); r
 function topRoleRank(v){ for(var i=0;i<TOP_ROLES.length;i++)if(TOP_ROLES[i][0]===v)return i; return 99; }
 const DEFAULT_LOC_CATS=[['rikuun','陸運局'],['parts','部品商'],['partner','取引先'],['site','自社拠点'],['customer','顧客先'],['police','警察署'],['other','その他']];
 let LOC_CATS=DEFAULT_LOC_CATS.slice();   // 設定ページ（coreSettings/app.locCats）で上書き
+// 貸与・アカウントの既定項目（設定で編集可・coreSettings/app.lendDefaults / acctDefaults）。チェック式＋自由入力。
+const LEND_SEED=['制服（ポロシャツ）','ツナギ','フリース','青ジャンバー','PC','ロッカー','その他','社員寮','工具補助（売掛残）'];
+const ACCT_SEED=['Alrit共用','Alrit個人アカウント','整備NAS','X','インスタ','コアフロー','メンテナス.C','トレロ（共有）','Adobeクリエイティブクラウド'];
+let LEND_DEFAULTS=LEND_SEED.slice();
+let ACCT_DEFAULTS=ACCT_SEED.slice();
 function empLabel(v){var x=EMP_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'');}
 function statusLabel(v){var x=STATUSES.find(function(e){return e[0]===v;});return x?x[1]:(v||'在籍');}
 function deptTypeLabel(v){var x=DEPT_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'課');}
@@ -509,7 +517,7 @@ function locCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).c
 function setCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('coreSettings'); }
 function setDoc(){ return setCol().doc('app'); }
 let SETTINGS={}; let _suns=null;
-function subscribeSettings(){ if(_suns)return; _suns=setDoc().onSnapshot(function(d){ SETTINGS=d.exists?(d.data()||{}):{}; if(Array.isArray(SETTINGS.locCats)&&SETTINGS.locCats.length){ LOC_CATS=SETTINGS.locCats.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { LOC_CATS=DEFAULT_LOC_CATS.slice(); } if(Array.isArray(SETTINGS.driveSkills)&&SETTINGS.driveSkills.length){ DRIVE_SKILLS=SETTINGS.driveSkills.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { DRIVE_SKILLS=DRIVE_CAPS.slice(); } if(curView==='locations')renderLocations(); if(curView==='settings')renderSettings(); if(curView==='skills')renderSkills(); }, function(e){console.error('[CM] settings',e);}); }
+function subscribeSettings(){ if(_suns)return; _suns=setDoc().onSnapshot(function(d){ SETTINGS=d.exists?(d.data()||{}):{}; if(Array.isArray(SETTINGS.locCats)&&SETTINGS.locCats.length){ LOC_CATS=SETTINGS.locCats.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { LOC_CATS=DEFAULT_LOC_CATS.slice(); } if(Array.isArray(SETTINGS.driveSkills)&&SETTINGS.driveSkills.length){ DRIVE_SKILLS=SETTINGS.driveSkills.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { DRIVE_SKILLS=DRIVE_CAPS.slice(); } LEND_DEFAULTS=(Array.isArray(SETTINGS.lendDefaults)&&SETTINGS.lendDefaults.length)?SETTINGS.lendDefaults.slice():LEND_SEED.slice(); ACCT_DEFAULTS=(Array.isArray(SETTINGS.acctDefaults)&&SETTINGS.acctDefaults.length)?SETTINGS.acctDefaults.slice():ACCT_SEED.slice(); if(curView==='locations')renderLocations(); if(curView==='settings')renderSettings(); if(curView==='skills')renderSkills(); if(curView==='lend')renderLend(); }, function(e){console.error('[CM] settings',e);}); }
 function portalCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers'); }
 let _muns=null,_duns=null,_luns=null;
 // v0.7.0: 全画面共通の並び順。手動 sortOrder（数値）優先→無ければ名前順。
@@ -552,39 +560,40 @@ function showView(v){
   if(v==='members')renderMembers(); else if(v==='org')renderOrg(); else if(v==='locations')renderLocations(); else if(v==='skills')renderSkills(); else if(v==='lend')renderLend(); else if(v==='settings')renderSettings();
 }
 
-/* ---------- 貸与・アカウント（退職時の回収・ログアウト台帳。記録のみ） ---------- */
+/* ---------- 貸与・アカウント（既定チェック＋自由入力。退職時の回収・ログアウト台帳） ---------- */
 var LEND_BUF={};
 function _lendBuf(m){ if(!LEND_BUF[m.id])LEND_BUF[m.id]={ lendItems:(m.lendItems||[]).map(function(o){return {item:o.item||'',note:o.note||''};}), accounts:(m.accounts||[]).map(function(o){return {service:o.service||'',note:o.note||''};}) }; return LEND_BUF[m.id]; }
-function lendSet(id,key,i,f,v){ var b=LEND_BUF[id]; if(b&&b[key]&&b[key][i])b[key][i][f]=v; }
-function lendAdd(id,key){ var b=LEND_BUF[id]; if(!b)return; b[key].push(key==='lendItems'?{item:'',note:''}:{service:'',note:''}); renderLend(); }
-function lendDel(id,key,i){ var b=LEND_BUF[id]; if(b&&b[key]){ b[key].splice(i,1); renderLend(); } }
+function _lendNF(key){ return key==='lendItems'?'item':'service'; }
+function lendDefToggle(id,key,name){ var b=LEND_BUF[id]; if(!b)return; var arr=b[key], nf=_lendNF(key), idx=-1; for(var i=0;i<arr.length;i++){if(arr[i][nf]===name){idx=i;break;}} if(idx>=0)arr.splice(idx,1); else { var o={note:''}; o[nf]=name; arr.push(o); } renderLend(); }
+function lendDefMemo(id,key,name,v){ var b=LEND_BUF[id]; if(!b)return; var nf=_lendNF(key); for(var i=0;i<b[key].length;i++){ if(b[key][i][nf]===name){ b[key][i].note=v; return; } } }
+function lendFreeSet(id,key,idx,f,v){ var b=LEND_BUF[id]; if(b&&b[key]&&b[key][idx])b[key][idx][f]=v; }
+function lendFreeAdd(id,key){ var b=LEND_BUF[id]; if(!b)return; var o={note:''}; o[_lendNF(key)]=''; b[key].push(o); renderLend(); }
+function lendFreeDel(id,key,idx){ var b=LEND_BUF[id]; if(b&&b[key]){ b[key].splice(idx,1); renderLend(); } }
 function lendSave(id){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var b=LEND_BUF[id]; if(!b)return;
   var lend=b.lendItems.filter(function(o){return (o.item||'').trim()||(o.note||'').trim();});
   var acct=b.accounts.filter(function(o){return (o.service||'').trim()||(o.note||'').trim();});
   b.lendItems=lend; b.accounts=acct;
   saveMemberField(id,{lendItems:lend,accounts:acct}).then(function(){ toast('保存しました'); renderLend(); }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
 }
+function _lendGroupHTML(m,key,defaults,title,ph){
+  var b=_lendBuf(m), arr=b[key], nf=_lendNF(key), ro=!IS_ADMIN;
+  var defH=defaults.map(function(name){
+    var on=false, note=''; for(var i=0;i<arr.length;i++){ if(arr[i][nf]===name){ on=true; note=arr[i].note||''; break; } }
+    return '<div class="lend-defrow"><label class="lend-chk"><input type="checkbox" '+(on?'checked':'')+(ro?' disabled':'')+' onchange="lendDefToggle(\''+escA(m.id)+'\',\''+key+'\',\''+escA(name)+'\')"> '+esc(name)+'</label>'+(on?('<input type="text" value="'+esc(note)+'" placeholder="メモ（任意）" oninput="lendDefMemo(\''+escA(m.id)+'\',\''+key+'\',\''+escA(name)+'\',this.value)"'+(ro?' disabled':'')+' style="flex:1;min-width:90px">'):'')+'</div>';
+  }).join('');
+  var freeH=arr.map(function(x,idx){return {x:x,idx:idx};}).filter(function(o){ return defaults.indexOf(o.x[nf])<0; }).map(function(o){
+    return '<div style="display:flex;gap:6px;margin:4px 0;align-items:center"><input type="text" value="'+esc(o.x[nf]||'')+'" placeholder="'+ph+'" oninput="lendFreeSet(\''+escA(m.id)+'\',\''+key+'\','+o.idx+',\''+nf+'\',this.value)" style="flex:1"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.x.note||'')+'" placeholder="メモ" oninput="lendFreeSet(\''+escA(m.id)+'\',\''+key+'\','+o.idx+',\'note\',this.value)" style="flex:1"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="lendFreeDel(\''+escA(m.id)+'\',\''+key+'\','+o.idx+')" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>';
+  }).join('');
+  return '<div class="lend-col"><div class="lend-col-h">'+title+'</div>'+defH+(freeH||'')+(ro?'':'<button class="lend-add" onclick="lendFreeAdd(\''+escA(m.id)+'\',\''+key+'\')">＋ その他（自由入力）</button>')+'</div>';
+}
 function renderLend(){
   var body=document.getElementById('lend-body'); if(!body)return;
   var list=(MEMBERS||[]).slice();
   if(!list.length){ body.innerHTML='<div class="empty">社員が未登録です。</div>'; return; }
   var ro=!IS_ADMIN;
-  function rows(m,key){ var b=_lendBuf(m); return b[key].map(function(o,i){
-    var p1=(key==='lendItems')?'品目（鍵 / PC / 制服 / 社用車…）':'サービス（会社X / Instagram / Google…）';
-    var p2=(key==='lendItems')?'メモ（番号・台数など）':'ID・メモ（共有/専用・権限）';
-    var f1=(key==='lendItems')?'item':'service';
-    return '<div style="display:flex;gap:6px;margin-bottom:5px;align-items:center"><input type="text" value="'+esc(o[f1]||'')+'" placeholder="'+p1+'" oninput="lendSet(\''+escA(m.id)+'\',\''+key+'\','+i+',\''+f1+'\',this.value)" style="flex:1"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.note||'')+'" placeholder="'+p2+'" oninput="lendSet(\''+escA(m.id)+'\',\''+key+'\','+i+',\'note\',this.value)" style="flex:1"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="lendDel(\''+escA(m.id)+'\',\''+key+'\','+i+')" title="削除" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>';
-  }).join(''); }
   body.innerHTML=list.map(function(m){
     var left=(m.status==='left');
-    var lendRows=rows(m,'lendItems'), acctRows=rows(m,'accounts');
-    return '<div class="lend-card">'+
-      '<div class="lend-head">'+avatarHTML(m,30)+'<span class="lend-nm">'+esc(m.name||'(無名)')+'</span>'+(m.roleTitle?'<span class="lend-role">'+esc(m.roleTitle)+'</span>':'')+(left?'<span class="lend-left">退職</span>':'')+(ro?'':'<button class="btn-save" style="margin-left:auto" onclick="lendSave(\''+escA(m.id)+'\')">💾 保存</button>')+'</div>'+
-      '<div class="lend-cols">'+
-        '<div class="lend-col"><div class="lend-col-h">🔑 貸与品</div>'+(lendRows||'<div class="lend-none">なし</div>')+(ro?'':'<button class="lend-add" onclick="lendAdd(\''+escA(m.id)+'\',\'lendItems\')">＋ 追加</button>')+'</div>'+
-        '<div class="lend-col"><div class="lend-col-h">🔐 使わせているアカウント</div>'+(acctRows||'<div class="lend-none">なし</div>')+(ro?'':'<button class="lend-add" onclick="lendAdd(\''+escA(m.id)+'\',\'accounts\')">＋ 追加</button>')+'</div>'+
-      '</div>'+
-    '</div>';
+    return '<div class="lend-card"><div class="lend-head">'+avatarHTML(m,30)+'<span class="lend-nm">'+esc(m.name||'(無名)')+'</span>'+(m.roleTitle?'<span class="lend-role">'+esc(m.roleTitle)+'</span>':'')+(left?'<span class="lend-left">退職</span>':'')+(ro?'':'<button class="btn-save" style="margin-left:auto" onclick="lendSave(\''+escA(m.id)+'\')">💾 保存</button>')+'</div><div class="lend-cols">'+_lendGroupHTML(m,'lendItems',LEND_DEFAULTS,'🔑 貸与品','その他の品目')+_lendGroupHTML(m,'accounts',ACCT_DEFAULTS,'🔐 使わせているアカウント','その他のサービス')+'</div></div>';
   }).join('')+(ro?'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>':'');
 }
 
@@ -1053,9 +1062,27 @@ function deleteLocCur(){ if(!IS_ADMIN||!LE||!LE.id)return; if(!confirm(LE.name+'
 
 /* ---------- 設定（場所カテゴリの編集・並び替え） ---------- */
 let CATEDIT=null, DSEDIT=null;
+let LENDEDIT=null, ACCTEDIT=null;
+function _strListRows(buf, setFn, moveFn, delFn, ro){
+  return buf.map(function(s,i){ return '<div class="catrow"><span class="catord">'+(i+1)+'</span><input type="text" class="catinput" value="'+esc(s)+'"'+(ro?' disabled':' oninput="'+setFn+'('+i+',this.value)"')+'>'+(ro?'':'<button class="iconbtn" title="上へ" onclick="'+moveFn+'('+i+',-1)">↑</button><button class="iconbtn" title="下へ" onclick="'+moveFn+'('+i+',1)">↓</button><button class="iconbtn" title="削除" onclick="'+delFn+'('+i+')">🗑</button>')+'</div>'; }).join('');
+}
+function lendDefSetLabel(i,v){ if(LENDEDIT)LENDEDIT[i]=v; }
+function lendDefMove(i,d){ var j=i+d; if(j<0||j>=LENDEDIT.length)return; var t=LENDEDIT[i];LENDEDIT[i]=LENDEDIT[j];LENDEDIT[j]=t; renderSettings(); }
+function lendDefDel(i){ LENDEDIT.splice(i,1); renderSettings(); }
+function lendDefAdd(){ if(!LENDEDIT)LENDEDIT=[]; LENDEDIT.push('新しい項目'); renderSettings(); var ins=document.querySelectorAll('#lend-list .catinput'); var last=ins[ins.length-1]; if(last){last.focus();last.select();} }
+function lendDefResetEdit(){ LENDEDIT=null; renderSettings(); toast('変更を破棄しました'); }
+function saveLendDefaults(){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var items=(LENDEDIT||[]).map(function(s){return String(s).trim();}).filter(Boolean); var st=document.getElementById('lend-st'); if(st)st.textContent='保存中…'; setDoc().set({lendDefaults:items,updatedAt:window.fb.serverTimestamp()},{merge:true}).then(function(){ LENDEDIT=null; toast('貸与品の既定を保存しました'); }).catch(function(e){ console.error(e); if(st)st.textContent='⚠ 保存に失敗（権限/通信）'; }); }
+function acctDefSetLabel(i,v){ if(ACCTEDIT)ACCTEDIT[i]=v; }
+function acctDefMove(i,d){ var j=i+d; if(j<0||j>=ACCTEDIT.length)return; var t=ACCTEDIT[i];ACCTEDIT[i]=ACCTEDIT[j];ACCTEDIT[j]=t; renderSettings(); }
+function acctDefDel(i){ ACCTEDIT.splice(i,1); renderSettings(); }
+function acctDefAdd(){ if(!ACCTEDIT)ACCTEDIT=[]; ACCTEDIT.push('新しいアカウント'); renderSettings(); var ins=document.querySelectorAll('#acct-list .catinput'); var last=ins[ins.length-1]; if(last){last.focus();last.select();} }
+function acctDefResetEdit(){ ACCTEDIT=null; renderSettings(); toast('変更を破棄しました'); }
+function saveAcctDefaults(){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var items=(ACCTEDIT||[]).map(function(s){return String(s).trim();}).filter(Boolean); var st=document.getElementById('acct-st'); if(st)st.textContent='保存中…'; setDoc().set({acctDefaults:items,updatedAt:window.fb.serverTimestamp()},{merge:true}).then(function(){ ACCTEDIT=null; toast('アカウントの既定を保存しました'); }).catch(function(e){ console.error(e); if(st)st.textContent='⚠ 保存に失敗（権限/通信）'; }); }
 function renderSettings(){
   if(!CATEDIT) CATEDIT=LOC_CATS.map(function(c){return {key:c[0],label:c[1]};});
   if(!DSEDIT) DSEDIT=DRIVE_SKILLS.map(function(c){return {key:c[0],label:c[1]};});
+  if(!LENDEDIT) LENDEDIT=LEND_DEFAULTS.slice();
+  if(!ACCTEDIT) ACCTEDIT=ACCT_DEFAULTS.slice();
   var ro=!IS_ADMIN;
   var rows=CATEDIT.map(function(c,i){
     var cnt=LOCS.filter(function(l){return l.category===c.key;}).length;
@@ -1083,6 +1110,16 @@ function renderSettings(){
     +'<p style="font-size:12px;color:var(--text3);margin:0 0 10px">場所マスターの分類ラベル。名称変更・並び替え・追加・削除ができます。並び順は場所一覧の表示順（自社→よく使う→カテゴリ→五十音）にも反映されます。</p>'
     +'<div id="cat-list">'+rows+'</div>'
     +(IS_ADMIN?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-ghost" onclick="catAdd()">＋ カテゴリ追加</button><button class="btn-save" onclick="saveCats()">保存</button><button class="btn-ghost" onclick="catReset()">変更を破棄</button></div><div id="cat-st" style="font-size:11px;color:var(--text3);margin-top:8px"></div>':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※編集は管理者のみ。</p>')
+    +'</div>'
+    +'<div class="note-card"><h4>🔑 貸与品の既定リスト</h4>'
+    +'<p style="font-size:12px;color:var(--text3);margin:0 0 10px">「貸与・アカウント」でチェックする<b>貸与品</b>の既定項目です。名称変更・並び替え・追加・削除（各社員のチェックは「貸与・アカウント」で）。</p>'
+    +'<div id="lend-list">'+_strListRows(LENDEDIT,'lendDefSetLabel','lendDefMove','lendDefDel',ro)+'</div>'
+    +(IS_ADMIN?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-ghost" onclick="lendDefAdd()">＋ 項目追加</button><button class="btn-save" onclick="saveLendDefaults()">保存</button><button class="btn-ghost" onclick="lendDefResetEdit()">変更を破棄</button></div><div id="lend-st" style="font-size:11px;color:var(--text3);margin-top:8px"></div>':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※編集は管理者のみ。</p>')
+    +'</div>'
+    +'<div class="note-card"><h4>🔐 アカウントの既定リスト</h4>'
+    +'<p style="font-size:12px;color:var(--text3);margin:0 0 10px">「貸与・アカウント」でチェックする<b>アカウント</b>の既定項目（会社のX・Instagram等）。名称変更・並び替え・追加・削除。</p>'
+    +'<div id="acct-list">'+_strListRows(ACCTEDIT,'acctDefSetLabel','acctDefMove','acctDefDel',ro)+'</div>'
+    +(IS_ADMIN?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-ghost" onclick="acctDefAdd()">＋ 項目追加</button><button class="btn-save" onclick="saveAcctDefaults()">保存</button><button class="btn-ghost" onclick="acctDefResetEdit()">変更を破棄</button></div><div id="acct-st" style="font-size:11px;color:var(--text3);margin-top:8px"></div>':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※編集は管理者のみ。</p>')
     +'</div>';
 }
 function dsSetLabel(i,v){ if(DSEDIT&&DSEDIT[i])DSEDIT[i].label=v; }
