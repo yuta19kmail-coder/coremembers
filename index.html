@@ -96,11 +96,10 @@
   .mcard .mmeta{font-size:11.5px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .mcard .grow{flex:1;min-width:0}
   .badge{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px}
-  .b-vis{background:rgba(99,102,241,.16);color:#a5b4fc;border:1px solid rgba(99,102,241,.32)}
-  /* アバタークリック＝表示メンバー設定（①②のみ） */
-  .mcard-av{position:relative;display:inline-flex;flex:none;cursor:pointer;border-radius:50%}
-  .mcard-av:hover{box-shadow:0 0 0 2px var(--acc)}
-  .mcard-av .vis-gear{position:absolute;right:-3px;bottom:-3px;width:16px;height:16px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1}
+  /* カード右の「閲覧権限」ボタン（①②のみ） */
+  .vis-btn{flex:none;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .vis-btn:hover{border-color:var(--acc);color:var(--text)}
+  .vis-btn.on{background:rgba(99,102,241,.16);border-color:rgba(99,102,241,.5);color:#a5b4fc}
   /* 表示メンバー設定モーダル */
   .vis-note{font-size:12px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:12px;line-height:1.55}
   .vis-mode{display:flex;gap:8px;margin-bottom:10px}
@@ -930,14 +929,13 @@ function memberCardHTML(m, reorderScope, hideSection){
   var dr=[]; if(m.mt)dr.push('MT可'); if(m.licenses&&m.licenses.length)dr.push(m.licenses.slice(0,3).join('/'));
   var secNm=(!hideSection&&memberDeptIds(m).sectionId)?deptName(memberDeptIds(m).sectionId):''; var secB=secNm?'<span class="badge b-dept">🏢 '+esc(secNm)+'</span>':'';
   var ord=(reorderScope!==undefined)?reorderBtns(m.id,-1,reorderScope):'';
-  // アバターは①②のみ「表示メンバー設定」を開くクリック対象（👁）。それ以外は通常アバター。
-  var avB = IS_ADMIN
-    ? '<span class="mcard-av" title="このメンバーに表示する人を設定" onclick="event.stopPropagation();openVisModal(\''+escA(m.id)+'\')">'+avatarHTML(m,38)+'<span class="vis-gear">👁</span></span>'
-    : avatarHTML(m,38);
-  var visB = (IS_ADMIN&&m.visCustom) ? '<span class="badge b-vis" title="表示メンバーを手動設定済み">👁 '+((m.visibleIds||[]).length)+'</span>' : '';
-  return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avB+
-    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.dispName?'<span class="mk">通称:'+esc(m.dispName)+'</span>':'')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+visB+'</div>'+
-    '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
+  // カード右の「閲覧権限」ボタン（①②のみ）。カード本体クリック＝従来の編集モーダルとは stopPropagation で分離。
+  var visBtn = IS_ADMIN
+    ? '<button class="vis-btn'+(m.visCustom?' on':'')+'" title="この人が名簿・組織図・スキルで見られるメンバーを設定" onclick="event.stopPropagation();openVisModal(\''+escA(m.id)+'\')">👁 '+(m.visCustom?('閲覧 '+((m.visibleIds||[]).length)+'人'):'閲覧権限')+'</button>'
+    : '';
+  return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avatarHTML(m,38)+
+    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.dispName?'<span class="mk">通称:'+esc(m.dispName)+'</span>':'')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
+    '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div>'+visBtn+'</div>';
 }
 
 /* 社員モーダル */
