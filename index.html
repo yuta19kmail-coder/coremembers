@@ -266,7 +266,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.11.2</div>
+    <div class="ver">CoreMembers v0.11.3</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -281,7 +281,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.11.2</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.11.3</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -500,10 +500,12 @@ function topRoleRank(v){ for(var i=0;i<TOP_ROLES.length;i++)if(TOP_ROLES[i][0]==
 const DEFAULT_LOC_CATS=[['rikuun','陸運局'],['parts','部品商'],['partner','取引先'],['site','自社拠点'],['customer','顧客先'],['police','警察署'],['other','その他']];
 let LOC_CATS=DEFAULT_LOC_CATS.slice();   // 設定ページ（coreSettings/app.locCats）で上書き
 // 貸与・アカウントの既定項目（設定で編集可・coreSettings/app.lendDefaults / acctDefaults）。チェック式＋自由入力。
-const LEND_SEED=['制服（ポロシャツ）','ツナギ','フリース','青ジャンバー','PC','ロッカー','社員寮','工具補助（売掛残）'];
+const LEND_SEED=['制服（ポロシャツ）','ツナギ','フリース','青ジャンバー','PC','ロッカー'];
 const ACCT_SEED=['Alrit共用','Alrit個人アカウント','整備NAS','X','インスタ','コアフロー','メンテナス.C','トレロ（共有）','Adobeクリエイティブクラウド'];
+const OTHER_SEED=['社員寮','工具補助（売掛残）'];
 let LEND_DEFAULTS=LEND_SEED.slice();
 let ACCT_DEFAULTS=ACCT_SEED.slice();
+let OTHER_DEFAULTS=OTHER_SEED.slice();
 function empLabel(v){var x=EMP_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'');}
 function statusLabel(v){var x=STATUSES.find(function(e){return e[0]===v;});return x?x[1]:(v||'在籍');}
 function deptTypeLabel(v){var x=DEPT_TYPES.find(function(e){return e[0]===v;});return x?x[1]:(v||'課');}
@@ -527,7 +529,7 @@ function locCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).c
 function setCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('coreSettings'); }
 function setDoc(){ return setCol().doc('app'); }
 let SETTINGS={}; let _suns=null;
-function subscribeSettings(){ if(_suns)return; _suns=setDoc().onSnapshot(function(d){ SETTINGS=d.exists?(d.data()||{}):{}; if(Array.isArray(SETTINGS.locCats)&&SETTINGS.locCats.length){ LOC_CATS=SETTINGS.locCats.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { LOC_CATS=DEFAULT_LOC_CATS.slice(); } if(Array.isArray(SETTINGS.driveSkills)&&SETTINGS.driveSkills.length){ DRIVE_SKILLS=SETTINGS.driveSkills.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { DRIVE_SKILLS=DRIVE_CAPS.slice(); } LEND_DEFAULTS=(Array.isArray(SETTINGS.lendDefaults)&&SETTINGS.lendDefaults.length)?SETTINGS.lendDefaults.slice():LEND_SEED.slice(); ACCT_DEFAULTS=(Array.isArray(SETTINGS.acctDefaults)&&SETTINGS.acctDefaults.length)?SETTINGS.acctDefaults.slice():ACCT_SEED.slice(); if(curView==='locations')renderLocations(); if(curView==='settings')renderSettings(); if(curView==='skills')renderSkills(); if(curView==='lend')renderLend(); }, function(e){console.error('[CM] settings',e);}); }
+function subscribeSettings(){ if(_suns)return; _suns=setDoc().onSnapshot(function(d){ SETTINGS=d.exists?(d.data()||{}):{}; if(Array.isArray(SETTINGS.locCats)&&SETTINGS.locCats.length){ LOC_CATS=SETTINGS.locCats.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { LOC_CATS=DEFAULT_LOC_CATS.slice(); } if(Array.isArray(SETTINGS.driveSkills)&&SETTINGS.driveSkills.length){ DRIVE_SKILLS=SETTINGS.driveSkills.filter(function(c){return c&&c.key;}).map(function(c){return [c.key,c.label||c.key];}); } else { DRIVE_SKILLS=DRIVE_CAPS.slice(); } LEND_DEFAULTS=(Array.isArray(SETTINGS.lendDefaults)&&SETTINGS.lendDefaults.length)?SETTINGS.lendDefaults.slice():LEND_SEED.slice(); ACCT_DEFAULTS=(Array.isArray(SETTINGS.acctDefaults)&&SETTINGS.acctDefaults.length)?SETTINGS.acctDefaults.slice():ACCT_SEED.slice(); OTHER_DEFAULTS=Array.isArray(SETTINGS.othersDefaults)?SETTINGS.othersDefaults.slice():OTHER_SEED.slice(); if(curView==='locations')renderLocations(); if(curView==='settings')renderSettings(); if(curView==='skills')renderSkills(); if(curView==='lend')renderLend(); }, function(e){console.error('[CM] settings',e);}); }
 function portalCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID).collection('portalMembers'); }
 let _muns=null,_duns=null,_luns=null;
 // v0.7.0: 全画面共通の並び順。手動 sortOrder（数値）優先→無ければ名前順。
@@ -612,7 +614,7 @@ function renderLend(){
     var open=!!LEND_OPEN[m.id], cnt=_lendCount(m), left=(m.status==='left');
     var sum=(cnt.l||cnt.a||cnt.o)?('<span class="lend-sum">🔑 '+cnt.l+'　🔐 '+cnt.a+(cnt.o?'　🗂 '+cnt.o:'')+'</span>'):'<span class="lend-sum lend-sum0">未登録</span>';
     var head='<div class="lend-head" onclick="lendToggleOpen(\''+escA(m.id)+'\')">'+avatarHTML(m,28)+'<span class="lend-nm">'+esc(m.name||'(無名)')+'</span>'+(m.roleTitle?'<span class="lend-role">'+esc(m.roleTitle)+'</span>':'')+(left?'<span class="lend-left">退職</span>':'')+sum+'<span class="lend-caret">'+(open?'▲':'▼')+'</span></div>';
-    var bd=open?('<div class="lend-cols">'+_lendGroupHTML(m,'lendItems',LEND_DEFAULTS,'🔑 貸与','品目')+_lendGroupHTML(m,'accounts',ACCT_DEFAULTS,'🔐 アカウント','サービス')+_lendGroupHTML(m,'others',[],'🗂 その他','内容')+'</div>'+(ro?'':'<div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-save" onclick="lendSave(\''+escA(m.id)+'\')">💾 保存</button></div>')):'';
+    var bd=open?('<div class="lend-cols">'+_lendGroupHTML(m,'lendItems',LEND_DEFAULTS,'🔑 貸与','品目')+_lendGroupHTML(m,'accounts',ACCT_DEFAULTS,'🔐 アカウント','サービス')+_lendGroupHTML(m,'others',OTHER_DEFAULTS,'🗂 その他','内容')+'</div>'+(ro?'':'<div style="display:flex;justify-content:flex-end;margin-top:10px"><button class="btn-save" onclick="lendSave(\''+escA(m.id)+'\')">💾 保存</button></div>')):'';
     return '<div class="lend-card'+(open?' open':'')+'">'+head+bd+'</div>';
   }).join('')+(ro?'<p style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</p>':'');
 }
@@ -1082,7 +1084,7 @@ function deleteLocCur(){ if(!IS_ADMIN||!LE||!LE.id)return; if(!confirm(LE.name+'
 
 /* ---------- 設定（場所カテゴリの編集・並び替え） ---------- */
 let CATEDIT=null, DSEDIT=null;
-let LENDEDIT=null, ACCTEDIT=null;
+let LENDEDIT=null, ACCTEDIT=null, OTHEREDIT=null;
 function _strListRows(buf, setFn, moveFn, delFn, ro){
   return buf.map(function(s,i){ return '<div class="catrow"><span class="catord">'+(i+1)+'</span><input type="text" class="catinput" value="'+esc(s)+'"'+(ro?' disabled':' oninput="'+setFn+'('+i+',this.value)"')+'>'+(ro?'':'<button class="iconbtn" title="上へ" onclick="'+moveFn+'('+i+',-1)">↑</button><button class="iconbtn" title="下へ" onclick="'+moveFn+'('+i+',1)">↓</button><button class="iconbtn" title="削除" onclick="'+delFn+'('+i+')">🗑</button>')+'</div>'; }).join('');
 }
@@ -1098,11 +1100,18 @@ function acctDefDel(i){ ACCTEDIT.splice(i,1); renderSettings(); }
 function acctDefAdd(){ if(!ACCTEDIT)ACCTEDIT=[]; ACCTEDIT.push('新しいアカウント'); renderSettings(); var ins=document.querySelectorAll('#acct-list .catinput'); var last=ins[ins.length-1]; if(last){last.focus();last.select();} }
 function acctDefResetEdit(){ ACCTEDIT=null; renderSettings(); toast('変更を破棄しました'); }
 function saveAcctDefaults(){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var items=(ACCTEDIT||[]).map(function(s){return String(s).trim();}).filter(Boolean); var st=document.getElementById('acct-st'); if(st)st.textContent='保存中…'; setDoc().set({acctDefaults:items,updatedAt:window.fb.serverTimestamp()},{merge:true}).then(function(){ ACCTEDIT=null; toast('アカウントの既定を保存しました'); }).catch(function(e){ console.error(e); if(st)st.textContent='⚠ 保存に失敗（権限/通信）'; }); }
+function otherDefSetLabel(i,v){ if(OTHEREDIT)OTHEREDIT[i]=v; }
+function otherDefMove(i,d){ var j=i+d; if(j<0||j>=OTHEREDIT.length)return; var t=OTHEREDIT[i];OTHEREDIT[i]=OTHEREDIT[j];OTHEREDIT[j]=t; renderSettings(); }
+function otherDefDel(i){ OTHEREDIT.splice(i,1); renderSettings(); }
+function otherDefAdd(){ if(!OTHEREDIT)OTHEREDIT=[]; OTHEREDIT.push('新しい項目'); renderSettings(); var ins=document.querySelectorAll('#other-list .catinput'); var last=ins[ins.length-1]; if(last){last.focus();last.select();} }
+function otherDefResetEdit(){ OTHEREDIT=null; renderSettings(); toast('変更を破棄しました'); }
+function saveOtherDefaults(){ if(!IS_ADMIN){toast('編集は管理者のみ');return;} var items=(OTHEREDIT||[]).map(function(s){return String(s).trim();}).filter(Boolean); var st=document.getElementById('other-st'); if(st)st.textContent='保存中…'; setDoc().set({othersDefaults:items,updatedAt:window.fb.serverTimestamp()},{merge:true}).then(function(){ OTHEREDIT=null; toast('その他の既定を保存しました'); }).catch(function(e){ console.error(e); if(st)st.textContent='⚠ 保存に失敗（権限/通信）'; }); }
 function renderSettings(){
   if(!CATEDIT) CATEDIT=LOC_CATS.map(function(c){return {key:c[0],label:c[1]};});
   if(!DSEDIT) DSEDIT=DRIVE_SKILLS.map(function(c){return {key:c[0],label:c[1]};});
   if(!LENDEDIT) LENDEDIT=LEND_DEFAULTS.slice();
   if(!ACCTEDIT) ACCTEDIT=ACCT_DEFAULTS.slice();
+  if(!OTHEREDIT) OTHEREDIT=OTHER_DEFAULTS.slice();
   var ro=!IS_ADMIN;
   var rows=CATEDIT.map(function(c,i){
     var cnt=LOCS.filter(function(l){return l.category===c.key;}).length;
@@ -1140,6 +1149,11 @@ function renderSettings(){
     +'<p style="font-size:12px;color:var(--text3);margin:0 0 10px">「貸与・アカウント」でチェックする<b>アカウント</b>の既定項目（会社のX・Instagram等）。名称変更・並び替え・追加・削除。</p>'
     +'<div id="acct-list">'+_strListRows(ACCTEDIT,'acctDefSetLabel','acctDefMove','acctDefDel',ro)+'</div>'
     +(IS_ADMIN?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-ghost" onclick="acctDefAdd()">＋ 項目追加</button><button class="btn-save" onclick="saveAcctDefaults()">保存</button><button class="btn-ghost" onclick="acctDefResetEdit()">変更を破棄</button></div><div id="acct-st" style="font-size:11px;color:var(--text3);margin-top:8px"></div>':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※編集は管理者のみ。</p>')
+    +'</div>'
+    +'<div class="note-card"><h4>🗂 その他の既定リスト</h4>'
+    +'<p style="font-size:12px;color:var(--text3);margin:0 0 10px">「貸与・アカウント」でチェックする<b>その他</b>の既定項目（社員寮・工具補助（売掛残）等、貸与でもアカウントでもないもの）。名称変更・並び替え・追加・削除。</p>'
+    +'<div id="other-list">'+_strListRows(OTHEREDIT,'otherDefSetLabel','otherDefMove','otherDefDel',ro)+'</div>'
+    +(IS_ADMIN?'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn-ghost" onclick="otherDefAdd()">＋ 項目追加</button><button class="btn-save" onclick="saveOtherDefaults()">保存</button><button class="btn-ghost" onclick="otherDefResetEdit()">変更を破棄</button></div><div id="other-st" style="font-size:11px;color:var(--text3);margin-top:8px"></div>':'<p style="font-size:12px;color:var(--text3);margin-top:8px">※編集は管理者のみ。</p>')
     +'</div>';
 }
 function dsSetLabel(i,v){ if(DSEDIT&&DSEDIT[i])DSEDIT[i].label=v; }
