@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.12.1">
+<meta name="app-version" content="0.12.2">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="icon" type="image/png" href="favicon.png?v=1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
@@ -287,7 +287,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.12.1</div>
+    <div class="ver">CoreMembers v0.12.2</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -302,7 +302,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.1</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.2</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -1179,7 +1179,8 @@ function memberSkillSummaryHTML(m){
 /* ---------- 組織（部署） ---------- */
 function deptRowHTML(d,depth){
   var leader=d.leaderMemberId?memberById(d.leaderMemberId):null;
-  var cnt=MEMBERS.filter(function(m){return m.primaryDeptId===d.id && inScope(m);}).length;
+  // v0.12.2: 部＝解決後deptId一致／課＝解決後sectionId一致で数える（新方式データは部=primaryDeptId・課=sectionDeptIdのため、生のprimaryDeptId一致だと課が0人になっていた）。
+  var cnt=MEMBERS.filter(function(m){ if(!inScope(m))return false; var dd=memberDeptIds(m); return dd.deptId===d.id || dd.sectionId===d.id; }).length;
   var arrow=depth>0?'<span style="color:var(--text3)">└ </span>':'';
   return '<div class="lrow" style="margin-left:'+(depth*24)+'px"><span class="dot" style="background:'+((d.color)||'#64748b')+'"></span><div class="grow"><div class="lt">'+arrow+esc(d.name)+' <span style="font-size:11px;color:var(--text3)">'+deptTypeLabel(d.type)+'</span></div><div class="ls">'+cnt+'人'+(leader?'・責任者：'+esc(leader.name):'')+'</div></div>'+(IS_ADMIN?'<button class="iconbtn" onclick="openDeptModal(\''+escA(d.id)+'\')">✏️</button>':'')+'</div>';
 }
