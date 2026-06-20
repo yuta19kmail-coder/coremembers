@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.12.2">
+<meta name="app-version" content="0.12.3">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="icon" type="image/png" href="favicon.png?v=1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
@@ -96,6 +96,8 @@
   .mcard .mmeta{font-size:11.5px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .mcard .grow{flex:1;min-width:0}
   .badge{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px}
+  /* カード右の在籍年月（①②のみ・閲覧権限ボタンの左隣） */
+  .tenure{flex:none;font-size:11.5px;color:var(--text3);white-space:nowrap}
   /* カード右の「閲覧権限」ボタン（①②のみ） */
   .vis-btn{flex:none;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 11px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
   .vis-btn:hover{border-color:var(--acc);color:var(--text)}
@@ -287,7 +289,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.12.2</div>
+    <div class="ver">CoreMembers v0.12.3</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -302,7 +304,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.2</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.3</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -612,6 +614,19 @@ function avatarColor(name){ var s=String(name||'？'),h=0; for(var i=0;i<s.lengt
 function memberPhoto(m){ if(!m)return null; if(m.portalMemberId){ var p=portalById(m.portalMemberId); if(p&&(p.photo||p.photoURL))return p.photo||p.photoURL; } return m.photo||m.photoURL||null; }
 /* 表示名：優先表示名(呼び名)があればそれ、無ければ氏名。各アプリ共通の表示用 */
 function dispNm(m){ return (m&&m.dispName)||(m&&m.name)||''; }
+// 入社日(YYYY-MM-DD)から今日までの在籍年月。例「入社3年2か月」。①②のカード表示用。
+function tenureLabel(joinedAt){
+  if(!joinedAt)return '';
+  var d=new Date(joinedAt); if(isNaN(d.getTime()))return '';
+  var now=new Date();
+  var months=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());
+  if(now.getDate()<d.getDate())months--;            // 起算日がまだ来ていなければ1か月引く
+  if(months<0)return '入社前';
+  if(months<1)return '入社1か月未満';
+  var y=Math.floor(months/12), mo=months%12;
+  return '入社'+(y>0?y+'年':'')+(mo>0?mo+'か月':(y>0?'':'0か月'));
+}
+function _fmtDate(s){ if(!s)return ''; var d=new Date(s); if(isNaN(d.getTime()))return String(s); return d.getFullYear()+'/'+(d.getMonth()+1)+'/'+d.getDate(); }
 function avatarHTML(m,sz){ sz=sz||38; var ph=memberPhoto(m); if(ph)return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px"><img src="'+ph+'" alt=""></span>'; var nm=(m&&m.name)||''; var bg=avatarColor(nm||(m&&m.ini)||'？'); var ini=nm?String(nm).trim().charAt(0):((m&&m.ini)||'？'); return '<span class="mav" style="width:'+sz+'px;height:'+sz+'px;background:'+bg+';font-size:'+Math.round(sz*0.42)+'px">'+esc(ini)+'</span>'; }
 
 /* ---------- 権限UI＋閲覧スコープ ---------- */
@@ -933,9 +948,12 @@ function memberCardHTML(m, reorderScope, hideSection){
   var visBtn = IS_ADMIN
     ? '<button class="vis-btn'+(m.visCustom?' on':'')+'" title="この人が名簿・組織図・スキルで見られるメンバーを設定" onclick="event.stopPropagation();openVisModal(\''+escA(m.id)+'\')">👁 '+(m.visCustom?('閲覧 '+((m.visibleIds||[]).length)+'人'):'閲覧権限')+'</button>'
     : '';
+  // 在籍年月（①②のみ・閲覧権限ボタンの左隣）。入社日(joinedAt)から起算。
+  var tn=IS_ADMIN?tenureLabel(m.joinedAt):'';
+  var tenureB=tn?'<span class="tenure" title="入社'+esc(_fmtDate(m.joinedAt))+'から">🗓 '+esc(tn)+'</span>':'';
   return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avatarHTML(m,38)+
     '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.dispName?'<span class="mk">通称:'+esc(m.dispName)+'</span>':'')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
-    '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div>'+visBtn+'</div>';
+    '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div>'+tenureB+visBtn+'</div>';
 }
 
 /* 社員モーダル */
