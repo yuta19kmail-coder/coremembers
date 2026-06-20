@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.12.3">
+<meta name="app-version" content="0.12.4">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="icon" type="image/png" href="favicon.png?v=1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
@@ -289,7 +289,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.12.3</div>
+    <div class="ver">CoreMembers v0.12.4</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -304,7 +304,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.3</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.4</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -589,6 +589,8 @@ function portalCol(){ return window.fb.db.collection('companies').doc(COMPANY_ID
 let _muns=null,_duns=null,_luns=null;
 // v0.7.0: 全画面共通の並び順。手動 sortOrder（数値）優先→無ければ名前順。
 function _cmpOrder(a,b){ var ao=(typeof a.sortOrder==='number')?a.sortOrder:1e9, bo=(typeof b.sortOrder==='number')?b.sortOrder:1e9; return ao-bo || String(a.name||'').localeCompare(String(b.name||''),'ja'); }
+// v0.12.4: 一覧ビュー用＝入社日が古い順（＝在籍が長い人が上）。joinedAt は 'YYYY-MM-DD' なので文字列比較＝日付順。入社日未設定は末尾。
+function _cmpJoined(a,b){ var aj=(a&&a.joinedAt)||'', bj=(b&&b.joinedAt)||''; if(aj&&bj){ if(aj<bj)return -1; if(aj>bj)return 1; return String(a.name||'').localeCompare(String(b.name||''),'ja'); } if(aj&&!bj)return -1; if(!aj&&bj)return 1; return String(a.name||'').localeCompare(String(b.name||''),'ja'); }
 function subscribeMembers(){ if(_muns)return; _muns=memCol().onSnapshot(function(s){ MEMBERS=[]; s.forEach(function(d){var m=d.data()||{};m.id=d.id;MEMBERS.push(m);}); MEMBERS.sort(_cmpOrder); setSyncState(true); if(curView==='members')renderMembers(); else if(curView==='org')renderOrg(); else if(curView==='skills'&&!SKILL_EDIT)renderSkills(); }, function(e){console.error('[CM] members',e);setSyncState(false);}); }
 function subscribeDepts(){ if(_duns)return; _duns=deptCol().onSnapshot(function(s){ DEPTS=[]; s.forEach(function(d){var x=d.data()||{};x.id=d.id;DEPTS.push(x);}); DEPTS.sort(function(a,b){return (a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='org')renderOrg(); if(curView==='members')renderMembers(); }, function(e){console.error('[CM] depts',e);setSyncState(false);}); }
 function subscribeLocations(){ if(_luns)return; _luns=locCol().onSnapshot(function(s){ LOCS=[]; s.forEach(function(d){var x=d.data()||{};x.id=d.id;LOCS.push(x);}); LOCS.sort(function(a,b){return (a.order||0)-(b.order||0)||String(a.name||'').localeCompare(String(b.name||''),'ja');}); setSyncState(true); if(curView==='locations')renderLocations(); }, function(e){console.error('[CM] locs',e);setSyncState(false);}); }
@@ -888,19 +890,21 @@ function renderMembers(){
     return true;
   });
   document.getElementById('mem-count').textContent='（'+list.length+'人）';
-  var canReorder=IS_ADMIN && !q && memReorder;   // 「並び替え」ボタンON＋非検索時のみ
-  var reBtn = IS_ADMIN ? (memReorder
+  // v0.12.4: 手動並び替えは「部署ごと」ビューだけ。「一覧」は入社日順で自動並び（並び替えボタンも出さない）。
+  var canReorder=IS_ADMIN && !q && memReorder && memView==='dept';
+  var reBtn = (IS_ADMIN && memView==='dept') ? (memReorder
       ? '<button class="mv-tab on" onclick="toggleMemReorder()">✓ 並び替え終了</button>'
       : '<button class="mv-tab" onclick="toggleMemReorder()">↕ 並び替え</button>') : '';
-  var hint = canReorder ? '<span class="mv-hint">▲▼で移動（全画面・スキル管理にも反映）</span>'
-      : (IS_ADMIN&&memReorder&&q ? '<span class="mv-hint">※検索中は並び替え不可（検索を消してください）</span>' : '');
+  var hint = canReorder ? '<span class="mv-hint">▲▼で移動（部署ビュー・スキル管理にも反映）</span>'
+      : (IS_ADMIN&&memReorder&&q&&memView==='dept' ? '<span class="mv-hint">※検索中は並び替え不可（検索を消してください）</span>'
+      : (memView==='list' ? '<span class="mv-hint">入社日が古い順（自動）</span>' : ''));
   var toggle='<div class="memview-bar"><div class="memview-tabs">'
     +'<button class="mv-tab'+(memView==='dept'?' on':'')+'" onclick="setMemView(\'dept\')">部署</button>'
     +'<button class="mv-tab'+(memView==='list'?' on':'')+'" onclick="setMemView(\'list\')">一覧</button></div>'
     +reBtn+'<span class="spacer"></span>'+hint+'</div>';
   var h='';
   if(memView==='list'){
-    h=list.map(function(m){ return memberCardHTML(m, canReorder?'all':undefined); }).join('');
+    h=list.slice().sort(_cmpJoined).map(function(m){ return memberCardHTML(m, undefined); }).join('');
   } else {
     var groups={}, order=[];
     DEPTS.forEach(function(d){ if(!d.parentId){ groups[d.id]=[]; order.push(d.id); } });   // 部（最上位）のみ見出し
