@@ -242,7 +242,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.9.0</div>
+    <div class="ver">CoreMembers v0.10.0</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -257,7 +257,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.9.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.10.0</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -703,8 +703,31 @@ function renderMemberForm(){
     '<div class="row2"><div class="fld"><label>入社日</label><input type="date" id="me-joined" value="'+esc(ME.joinedAt||'')+'"'+dis+'></div><div class="fld"><label>　</label><div style="display:flex;gap:14px;padding-top:6px"><label class="toggle"><input type="checkbox" id="me-show" '+(ME.showInSchedule!==false?'checked':'')+dis+'> 予定/シフトに出す</label><label class="toggle"><input type="checkbox" id="me-sched" '+(ME.schedulable!==false?'checked':'')+dis+'> 配車対象</label></div></div></div>'+
     '<div class="sec-h">アプリ連携</div>'+
     '<div class="fld"><label>ログインアカウント（portalMembers）</label><select id="me-portal"'+dis+'>'+portalOpts+'</select></div>'+
+    '<div class="sec-h">🔑 貸与・アカウント（退職時の回収・ログアウト用）</div>'+
+    '<div class="fld"><label>貸与品（鍵・制服・PC・工具・社用車など）</label><div id="me-lend"></div></div>'+
+    '<div class="fld"><label>使わせているアカウント</label><div id="me-acct"></div><div style="font-size:11px;color:var(--text3);margin-top:4px">会社のX・Instagram・各種ログインなど。退職時にここを見て、パスワード変更／ログアウト／回収に使います。</div></div>'+
     (ro?'<div style="font-size:12px;color:var(--text3);margin-top:8px">※閲覧のみ（編集は管理者）。</div>':'');
+  meLendRender(); meAcctRender();
 }
+/* 貸与品（ME.lendItems）／使わせているアカウント（ME.accounts）＝退職時の回収・ログアウト台帳。
+   ※記録だけ（AI・自動処理には使わない） */
+function _meRo(){ return !IS_ADMIN; }
+function meLendRender(){
+  var box=document.getElementById('me-lend'); if(!box)return; if(!Array.isArray(ME.lendItems))ME.lendItems=[]; var ro=_meRo();
+  var rows=ME.lendItems.map(function(o,i){ return '<div style="display:flex;gap:6px;margin-bottom:5px;align-items:center"><input type="text" value="'+esc(o.item||'')+'" placeholder="品目（例：店舗の鍵 / ノートPC / 制服）" oninput="meLendSet('+i+',\'item\',this.value)" style="flex:1"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.note||'')+'" placeholder="メモ（番号・台数など）" oninput="meLendSet('+i+',\'note\',this.value)" style="flex:1"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="meLendDel('+i+')" title="削除" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>'; }).join('');
+  box.innerHTML=rows+(ro?((ME.lendItems.length)?'':'<div style="font-size:11px;color:var(--text3)">なし</div>'):'<button onclick="meLendAdd()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;margin-top:2px">＋ 貸与品を追加</button>');
+}
+function meLendAdd(){ if(!Array.isArray(ME.lendItems))ME.lendItems=[]; ME.lendItems.push({item:'',note:''}); meLendRender(); }
+function meLendDel(i){ ME.lendItems.splice(i,1); meLendRender(); }
+function meLendSet(i,f,v){ if(ME.lendItems&&ME.lendItems[i])ME.lendItems[i][f]=v; }
+function meAcctRender(){
+  var box=document.getElementById('me-acct'); if(!box)return; if(!Array.isArray(ME.accounts))ME.accounts=[]; var ro=_meRo();
+  var rows=ME.accounts.map(function(o,i){ return '<div style="display:flex;gap:6px;margin-bottom:5px;align-items:center"><input type="text" value="'+esc(o.service||'')+'" placeholder="サービス（例：会社X / Instagram / Google）" oninput="meAcctSet('+i+',\'service\',this.value)" style="flex:1"'+(ro?' disabled':'')+'><input type="text" value="'+esc(o.note||'')+'" placeholder="ID・メモ（共有/専用・権限など）" oninput="meAcctSet('+i+',\'note\',this.value)" style="flex:1"'+(ro?' disabled':'')+'>'+(ro?'':'<button onclick="meAcctDel('+i+')" title="削除" style="background:transparent;border:0;cursor:pointer;font-size:14px">🗑</button>')+'</div>'; }).join('');
+  box.innerHTML=rows+(ro?((ME.accounts.length)?'':'<div style="font-size:11px;color:var(--text3)">なし</div>'):'<button onclick="meAcctAdd()" style="background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer;margin-top:2px">＋ アカウントを追加</button>');
+}
+function meAcctAdd(){ if(!Array.isArray(ME.accounts))ME.accounts=[]; ME.accounts.push({service:'',note:''}); meAcctRender(); }
+function meAcctDel(i){ ME.accounts.splice(i,1); meAcctRender(); }
+function meAcctSet(i,f,v){ if(ME.accounts&&ME.accounts[i])ME.accounts[i][f]=v; }
 // v0.6.0: 部を変えたら、課セレクトを「その部の下」に作り直す（部に合わない課はクリア）。
 function meDeptChange(){ ME.primaryDeptId=(document.getElementById('me-dept')||{}).value||''; var sd=deptById(ME.sectionDeptId||''); if(!ME.sectionDeptId||!sd||sd.parentId!==ME.primaryDeptId)ME.sectionDeptId=''; var wrap=document.getElementById('me-section-wrap'); if(wrap)wrap.innerHTML=sectionSelectHTML(); }
 // 在籍状況=退職の時だけ「退職日」欄を表示
