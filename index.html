@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="app-version" content="0.12.0">
+<meta name="app-version" content="0.12.1">
 <title>CoreMembers - 社員名簿＋組織図（小林モータース）</title>
 <link rel="icon" type="image/png" href="favicon.png?v=1">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
@@ -96,6 +96,28 @@
   .mcard .mmeta{font-size:11.5px;color:var(--text2);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   .mcard .grow{flex:1;min-width:0}
   .badge{font-size:10.5px;font-weight:700;border-radius:6px;padding:1px 7px}
+  .b-vis{background:rgba(99,102,241,.16);color:#a5b4fc;border:1px solid rgba(99,102,241,.32)}
+  /* アバタークリック＝表示メンバー設定（①②のみ） */
+  .mcard-av{position:relative;display:inline-flex;flex:none;cursor:pointer;border-radius:50%}
+  .mcard-av:hover{box-shadow:0 0 0 2px var(--acc)}
+  .mcard-av .vis-gear{position:absolute;right:-3px;bottom:-3px;width:16px;height:16px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;line-height:1}
+  /* 表示メンバー設定モーダル */
+  .vis-note{font-size:12px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:9px 11px;margin-bottom:12px;line-height:1.55}
+  .vis-mode{display:flex;gap:8px;margin-bottom:10px}
+  .vis-mb{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:9px 10px;font-size:13px;font-weight:700;cursor:pointer;text-align:center}
+  .vis-mb.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .vis-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:9px}
+  .vis-tools input.vis-q{flex:1;min-width:140px;background:var(--bg3);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit}
+  .vis-tbtn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer}
+  .vis-cnt{font-size:12px;color:var(--text2);margin-bottom:8px}
+  .vis-list{display:flex;flex-direction:column;gap:5px}
+  .vis-row{display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:7px 11px;cursor:pointer}
+  .vis-row.on{border-color:var(--acc)}
+  .vis-row.dis{cursor:default;opacity:.72}
+  .vis-row input{width:17px;height:17px;flex:none;accent-color:var(--acc)}
+  .vis-row .vn{font-size:13px;font-weight:600}
+  .vis-row .vm{font-size:11px;color:var(--text3);margin-left:auto;display:flex;gap:7px;align-items:center}
+  .vis-empty{font-size:12px;color:var(--text3);padding:10px 2px}
   .b-emp{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
   .b-dept{background:rgba(29,185,122,.14);color:#34d399;border:1px solid rgba(29,185,122,.3)}
   /* 名簿の一覧/部署トグル＋並び替え（v0.7.0） */
@@ -266,7 +288,7 @@
     <div class="sub">社員名簿＋組織図（小林モータース）</div>
     <button class="btn" onclick="loginWithGoogle()">Google でログイン</button>
     <div class="note" id="login-msg">小林モータースの名簿（CoreFlow）に登録された方だけ入室できます。</div>
-    <div class="ver">CoreMembers v0.12.0</div>
+    <div class="ver">CoreMembers v0.12.1</div>
   </div>
 </div>
 <div id="cm-denied">
@@ -281,7 +303,7 @@
 <div id="app">
   <div id="topbar">
     <button class="sb-toggle" onclick="toggleSidebar()" title="サイドバー開閉">☰</button>
-    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.0</span></div>
+    <div class="logo"><span>👥</span><span><span class="sf">Core</span>Members</span><span class="ver">v0.12.1</span></div>
     <button class="theme-toggle" onclick="toggleTheme()" title="テーマ切替">🌙</button>
     <div class="spacer"></div>
     <button class="tb-btn primary" id="btn-new" onclick="openMemberModal(null)">＋ 新規社員</button>
@@ -396,6 +418,15 @@
     <div class="mhead"><span class="mt" id="lm-title">場所</span><button class="x" onclick="closeLocModal()">✕</button></div>
     <div class="mbody" id="lm-body"></div>
     <div class="mfoot"><button class="btn-del" id="lm-del" style="display:none" onclick="deleteLocCur()">🗑 削除</button><div class="grow"></div><button class="btn-ghost" onclick="closeLocModal()">キャンセル</button><button class="btn-save" onclick="saveLocForm()">保存</button></div>
+  </div>
+</div>
+
+<!-- 表示メンバー設定モーダル（アバタークリック・①②のみ） -->
+<div class="mbg" id="vis-modal">
+  <div class="mbox" style="width:min(94vw,520px)">
+    <div class="mhead"><span class="mt" id="vis-title">表示メンバー</span><button class="x" onclick="closeVisModal()">✕</button></div>
+    <div class="mbody" id="vis-body"></div>
+    <div class="mfoot"><div class="grow"></div><button class="btn-ghost" onclick="closeVisModal()">キャンセル</button><button class="btn-save" onclick="visSave()">保存</button></div>
   </div>
 </div>
 
@@ -596,11 +627,39 @@ function myCoreMember(){ if(!MY_MEMBER_ID)return null; for(var i=0;i<MEMBERS.len
 // 自分＋配下（managerId が自分に連なる人を再帰収集）の id 集合。
 function _reportsSet(){ var me=myCoreMember(); var set={}; if(!me)return set; set[me.id]=true;
   var changed=true,guard=0; while(changed&&guard<100){ changed=false; guard++; MEMBERS.forEach(function(m){ if(!set[m.id]&&m.managerId&&set[m.managerId]){ set[m.id]=true; changed=true; } }); } return set; }
+// ある社員のロール（portalMembers から導出。enterApp と同じ信号）。ログイン未紐づけは null。
+function memberRole(m){
+  var p=(m&&m.portalMemberId)?portalById(m.portalMemberId):null;
+  if(!p)return null;
+  var cm=p.coremembers||{};
+  var r = p.master ? 'オーナー' : (cm.on&&cm.role) ? cm.role : p.admin ? '管理者' : '一般';
+  if(r==='責任者')r='上長';
+  return r;
+}
+// ロール→既定の閲覧スコープ種別。
+function roleScopeOf(role){
+  return (role==='オーナー'||role==='管理者'||role==='幹部') ? 'all'
+       : (role==='部署管理者') ? 'dept'
+       : (role==='上長') ? 'reports'
+       : 'self';
+}
+// その社員が「役割の自動範囲」で見えるメンバーid（自分を除く）。設定モーダルの初期値・プレビュー用。
+function autoVisibleIds(target){
+  if(!target)return [];
+  var role=memberRole(target), sc=role?roleScopeOf(role):'self';
+  if(sc==='all')return MEMBERS.filter(function(m){return m.id!==target.id;}).map(function(m){return m.id;});
+  if(sc==='self')return [];
+  if(sc==='dept'){ var a=memberDeptIds(target).deptId; if(!a)return []; return MEMBERS.filter(function(m){return m.id!==target.id && memberDeptIds(m).deptId===a;}).map(function(m){return m.id;}); }
+  if(sc==='reports'){ var set={}; set[target.id]=true; var ch=true,g=0; while(ch&&g<100){ ch=false; g++; MEMBERS.forEach(function(m){ if(!set[m.id]&&m.managerId&&set[m.managerId]){ set[m.id]=true; ch=true; } }); } delete set[target.id]; return Object.keys(set); }
+  return [];
+}
 // この社員が現在のロールの閲覧スコープ内か。
 function inScope(m){
-  if(VIEW_SCOPE==='all')return true;
+  if(VIEW_SCOPE==='all')return true;                 // ①②③＝全員（自分のvisCustomに関係なく全表示）
   var me=myCoreMember(); if(!me||!m)return false;
   if(m.id===me.id)return true;                       // 自分は常に見える
+  // 幹部以上が手動で「表示するメンバー」を指定していれば、役割の自動範囲より優先（self＋指定id）。
+  if(me.visCustom)return (me.visibleIds||[]).indexOf(m.id)>=0;
   if(VIEW_SCOPE==='self')return false;
   if(VIEW_SCOPE==='dept'){ var a=memberDeptIds(me).deptId; return !!a && a===memberDeptIds(m).deptId; }
   if(VIEW_SCOPE==='reports')return !!_reportsSet()[m.id];
@@ -613,6 +672,94 @@ function _scopeDeptIds(){
   var set={}; scopedMembers().forEach(function(m){ var dd=memberDeptIds(m); if(dd.deptId)set[dd.deptId]=true; if(dd.sectionId)set[dd.sectionId]=true; });
   Object.keys(set).forEach(function(id){ var d=deptById(id),g=0; while(d&&d.parentId&&g<50){ set[d.parentId]=true; d=deptById(d.parentId); g++; } });
   return set;
+}
+
+/* ---------- 表示メンバー設定（アバタークリック・①②のみ） ---------- */
+// VIS = { targetId, custom(bool), ids(array), q(string) }
+let VIS=null;
+function openVisModal(id){
+  if(!IS_ADMIN){ toast('設定はオーナー／管理者のみ'); return; }
+  var t=memberById(id); if(!t)return;
+  var custom=!!t.visCustom;
+  var ids = custom ? (Array.isArray(t.visibleIds)?t.visibleIds.slice():[]) : autoVisibleIds(t);
+  VIS={ targetId:id, custom:custom, ids:ids, q:'' };
+  renderVisModal();
+  document.getElementById('vis-modal').classList.add('show');
+}
+function closeVisModal(){ document.getElementById('vis-modal').classList.remove('show'); VIS=null; }
+function visSetMode(custom){
+  if(!VIS)return;
+  var t=memberById(VIS.targetId);
+  if(!custom){ VIS.ids=autoVisibleIds(t); }   // 自動：役割範囲をプレビュー
+  // 手動：いま表示中のidをそのまま引き継ぐ（自動範囲を起点に編集できる）
+  VIS.custom=custom; renderVisModal();
+}
+function visToggle(id){
+  if(!VIS||!VIS.custom)return;
+  var i=VIS.ids.indexOf(id);
+  if(i>=0)VIS.ids.splice(i,1); else VIS.ids.push(id);
+  renderVisList(); _visUpdateCount();
+}
+function _visFiltered(){
+  var t=memberById(VIS.targetId);
+  var q=_normEmail(VIS.q||'').replace(/\s/g,'');
+  return MEMBERS.filter(function(m){
+    if(!t||m.id===t.id)return false;            // 自分（対象本人）は除外＝常に自分は見える
+    if(q){ var hay=_normEmail((m.name||'')+(m.kana||'')+(m.dispName||'')+(m.roleTitle||'')).replace(/\s/g,''); if(hay.indexOf(q)<0)return false; }
+    return true;
+  }).sort(_cmpOrder);
+}
+function visSelectAll(){ if(!VIS||!VIS.custom)return; _visFiltered().forEach(function(m){ if(VIS.ids.indexOf(m.id)<0)VIS.ids.push(m.id); }); renderVisList(); _visUpdateCount(); }
+function visClear(){ if(!VIS||!VIS.custom)return; var keep={}; _visFiltered().forEach(function(m){keep[m.id]=true;}); VIS.ids=VIS.ids.filter(function(id){return !keep[id];}); renderVisList(); _visUpdateCount(); }
+function visSearch(v){ if(!VIS)return; VIS.q=v; renderVisList(); }
+function _visRowHTML(m){
+  var on=VIS.ids.indexOf(m.id)>=0, dis=!VIS.custom;
+  var role=memberRole(m); var roleB=role?('<span>'+esc(role)+'</span>'):'<span style="color:var(--text3)">未ログイン</span>';
+  var dd=memberDeptIds(m), dn=dd.deptId?deptName(dd.deptId):'';
+  return '<label class="vis-row'+(on?' on':'')+(dis?' dis':'')+'"'+(dis?'':' onclick="event.preventDefault();visToggle(\''+escA(m.id)+'\')"')+'>'
+    +'<input type="checkbox" '+(on?'checked':'')+(dis?' disabled':'')+'>'
+    +avatarHTML(m,26)+'<span class="vn">'+esc(m.name||'(無名)')+'</span>'
+    +'<span class="vm">'+(dn?'<span>🏢 '+esc(dn)+'</span>':'')+roleB+'</span></label>';
+}
+function renderVisList(){
+  var box=document.getElementById('vis-list'); if(!box||!VIS)return;
+  var rows=_visFiltered();
+  box.innerHTML = rows.length ? rows.map(_visRowHTML).join('') : '<div class="vis-empty">該当する社員がいません。</div>';
+}
+function _visUpdateCount(){
+  var el=document.getElementById('vis-cnt'); if(!el||!VIS)return;
+  el.textContent = VIS.custom ? ('選択中：'+VIS.ids.length+'人（＋本人）') : ('役割の自動範囲：'+VIS.ids.length+'人（＋本人）');
+}
+function renderVisModal(){
+  if(!VIS)return;
+  var t=memberById(VIS.targetId); if(!t)return;
+  document.getElementById('vis-title').textContent='👁 '+(t.name||'(無名)')+' に表示するメンバー';
+  var role=memberRole(t);
+  var roleTxt = role ? ('このメンバーの役割は「'+esc(role)+'」') : 'このメンバーはCoreFlow未紐づけ（ログインしません）';
+  var allRole = role && roleScopeOf(role)==='all';
+  var note='<div class="vis-note">'+roleTxt+'。<br>ここで指定した人が、このメンバーがログインしたとき名簿・組織図・スキルで見える相手になります（自分は常に表示）。'
+    + (allRole ? '<br><b>※オーナー／管理者／幹部は常に全員表示</b>なので、この設定は効きません（④部署管理者・⑤上長・⑥一般に効きます）。' : '')
+    + '</div>';
+  var mode='<div class="vis-mode">'
+    +'<button class="vis-mb'+(!VIS.custom?' on':'')+'" onclick="visSetMode(false)">自動（役割の範囲）</button>'
+    +'<button class="vis-mb'+(VIS.custom?' on':'')+'" onclick="visSetMode(true)">手動で指定する</button></div>';
+  var tools = VIS.custom
+    ? '<div class="vis-tools"><input class="vis-q" type="text" placeholder="名前で絞り込み" value="'+esc(VIS.q||'')+'" oninput="visSearch(this.value)"><button class="vis-tbtn" onclick="visSelectAll()">表示中を全選択</button><button class="vis-tbtn" onclick="visClear()">表示中を解除</button></div>'
+    : '<div class="vis-tools"><input class="vis-q" type="text" placeholder="名前で絞り込み" value="'+esc(VIS.q||'')+'" oninput="visSearch(this.value)"></div>';
+  var cntTxt = VIS.custom ? ('選択中：'+VIS.ids.length+'人（＋本人）') : ('役割の自動範囲：'+VIS.ids.length+'人（＋本人）');
+  document.getElementById('vis-body').innerHTML = note+mode+tools+'<div class="vis-cnt" id="vis-cnt">'+cntTxt+'</div><div class="vis-list" id="vis-list"></div>';
+  renderVisList();
+}
+function visSave(){
+  if(!VIS)return;
+  if(!IS_ADMIN){ toast('設定はオーナー／管理者のみ'); return; }
+  var patch = VIS.custom ? { visCustom:true, visibleIds:VIS.ids.slice() } : { visCustom:false, visibleIds:[] };
+  var id=VIS.targetId;
+  saveMemberField(id,patch).then(function(){
+    var mm=memberById(id); if(mm){ mm.visCustom=patch.visCustom; mm.visibleIds=patch.visibleIds; }
+    toast('表示メンバーを保存しました'); closeVisModal();
+    if(curView==='members')renderMembers(); else if(curView==='org')renderOrg();
+  }).catch(function(e){ console.error(e); toast('⚠ 保存に失敗（権限/通信）'); });
 }
 
 /* ---------- 画面切替 ---------- */
@@ -783,8 +930,13 @@ function memberCardHTML(m, reorderScope, hideSection){
   var dr=[]; if(m.mt)dr.push('MT可'); if(m.licenses&&m.licenses.length)dr.push(m.licenses.slice(0,3).join('/'));
   var secNm=(!hideSection&&memberDeptIds(m).sectionId)?deptName(memberDeptIds(m).sectionId):''; var secB=secNm?'<span class="badge b-dept">🏢 '+esc(secNm)+'</span>':'';
   var ord=(reorderScope!==undefined)?reorderBtns(m.id,-1,reorderScope):'';
-  return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avatarHTML(m,38)+
-    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.dispName?'<span class="mk">通称:'+esc(m.dispName)+'</span>':'')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+'</div>'+
+  // アバターは①②のみ「表示メンバー設定」を開くクリック対象（👁）。それ以外は通常アバター。
+  var avB = IS_ADMIN
+    ? '<span class="mcard-av" title="このメンバーに表示する人を設定" onclick="event.stopPropagation();openVisModal(\''+escA(m.id)+'\')">'+avatarHTML(m,38)+'<span class="vis-gear">👁</span></span>'
+    : avatarHTML(m,38);
+  var visB = (IS_ADMIN&&m.visCustom) ? '<span class="badge b-vis" title="表示メンバーを手動設定済み">👁 '+((m.visibleIds||[]).length)+'</span>' : '';
+  return '<div class="mcard" onclick="openMemberModal(\''+escA(m.id)+'\')">'+ord+avB+
+    '<div class="grow"><div class="mn">'+esc(m.name||'(名称未設定)')+(m.dispName?'<span class="mk">通称:'+esc(m.dispName)+'</span>':'')+(m.kana?'<span class="mk">'+esc(m.kana)+'</span>':'')+topB+statusBadge+visB+'</div>'+
     '<div class="mmeta">'+secB+(m.roleTitle?'<span>'+esc(m.roleTitle)+'</span>':'')+'<span class="badge b-emp">'+esc(emp||'—')+'</span>'+login+noplan+(dr.length?'<span style="color:var(--text3)">🚗 '+esc(dr.join('・'))+'</span>':'')+'</div></div></div>';
 }
 
